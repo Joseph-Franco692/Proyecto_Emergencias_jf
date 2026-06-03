@@ -1,0 +1,544 @@
+=========================================================
+   ESTRUCTURA Y CÓDIGO FUENTE - PROYECTO SPRING BOOT
+=========================================================
+
+
+// #########################################################
+// ARCHIVO: pom.xml
+// #########################################################
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.0.6</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.bomberos</groupId>
+	<artifactId>emergencias</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name/>
+	<description/>
+	<url/>
+	<licenses>
+		<license/>
+	</licenses>
+	<developers>
+		<developer/>
+	</developers>
+	<scm>
+		<connection/>
+		<developerConnection/>
+		<tag/>
+		<url/>
+	</scm>
+	<properties>
+		<java.version>25</java.version>
+	</properties>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>default-compile</id>
+						<phase>compile</phase>
+						<goals>
+							<goal>compile</goal>
+						</goals>
+						<configuration>
+							<annotationProcessorPaths>
+								<path>
+									<groupId>org.projectlombok</groupId>
+									<artifactId>lombok</artifactId>
+								</path>
+							</annotationProcessorPaths>
+						</configuration>
+					</execution>
+					<execution>
+						<id>default-testCompile</id>
+						<phase>test-compile</phase>
+						<goals>
+							<goal>testCompile</goal>
+						</goals>
+						<configuration>
+							<annotationProcessorPaths>
+								<path>
+									<groupId>org.projectlombok</groupId>
+									<artifactId>lombok</artifactId>
+								</path>
+							</annotationProcessorPaths>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
+
+
+// #########################################################
+// ARCHIVO: src\main\java\com\bomberos\emergencias\EmergenciasApplication.java
+// #########################################################
+
+package com.bomberos.emergencias;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
+
+@SpringBootApplication
+@EnableAsync
+public class EmergenciasApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(EmergenciasApplication.class, args);
+	}
+
+
+}
+
+
+// #########################################################
+// ARCHIVO: src\main\java\com\bomberos\emergencias\config\WebSocketConfig.java
+// #########################################################
+
+package com.bomberos.emergencias.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
+import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+
+@Configuration // Le dice a Spring que esta es una clase de configuración del sistema
+@EnableWebSocketMessageBroker // Habilita el manejo de mensajes en tiempo real con WebSockets mediante un Broker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry config) {
+        // Habilita un "canal de transmisión" (Broker) llamado "/topic".
+        // Angular se suscribirá a este canal (ej: "/topic/nuevos-reportes") para escuchar las alertas.
+        config.enableSimpleBroker("/topic");
+
+        // Prefijo para los mensajes que envíe el cliente hacia el servidor (si fuera necesario)
+        config.setApplicationDestinationPrefixes("/app");
+    }
+
+    @Override
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Registra el punto de conexión (Endpoint) donde Angular tocará la puerta para conectar el WebSocket.
+        // Se conectará a: ws://localhost:8081/ws-emergencias
+        registry.addEndpoint("/ws-emergencias")
+                .setAllowedOrigins("*"); // Permite conexiones desde cualquier origen (Evita errores de CORS en desarrollo)
+    }
+}
+
+// #########################################################
+// ARCHIVO: src\main\java\com\bomberos\emergencias\controllers\ReporteController.java
+// #########################################################
+
+package com.bomberos.emergencias.controllers;
+
+import com.bomberos.emergencias.models.ReporteCiudadano;
+import com.bomberos.emergencias.services.ReporteService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.math.BigDecimal;
+
+@RestController
+@RequestMapping("/api/reportes")
+@CrossOrigin(origins = "*")
+public class ReporteController {
+
+    @Autowired
+    private ReporteService reporteService; // Inyectamos el servicio con la lógica de hilos
+
+    @PostMapping(consumes = {"multipart/form-data"})
+    public ResponseEntity<ReporteCiudadano> crearReporte(
+            @RequestPart("descripcion") String descripcion,
+            @RequestPart("latitud") String latitud,
+            @RequestPart("longitud") String longitud,
+            @RequestPart("celularReportero") String celularReportero,
+            @RequestPart(value = "imagenes", required = false) MultipartFile[] fotos) {
+
+        ReporteCiudadano nuevoReporte = new ReporteCiudadano();
+        nuevoReporte.setDescripcion(descripcion);
+        nuevoReporte.setLatitud(new BigDecimal(latitud));
+        nuevoReporte.setLongitud(new BigDecimal(longitud));
+        nuevoReporte.setCelularReportero(celularReportero);
+
+        // 1. Guardamos en la base de datos
+        ReporteCiudadano reporteGuardado = reporteService.registrarYNotificar(nuevoReporte);
+
+        // 2. Procesamos las fotos en el hilo secundario
+        reporteService.guardarEvidenciasMultimediaAsincrono(reporteGuardado, fotos);
+
+        // Retornamos la respuesta
+        return ResponseEntity.ok(reporteGuardado);
+    }
+}
+
+// #########################################################
+// ARCHIVO: src\main\java\com\bomberos\emergencias\models\EvidenciaMultimedia.java
+// #########################################################
+
+package com.bomberos.emergencias.models;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import java.time.LocalDateTime;
+
+@Data
+@Entity
+@Table(name = "evidencias_multimedia")
+public class EvidenciaMultimedia {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // RELACIÓN: Muchas evidencias multimedia pertenecen a un único Reporte Ciudadano
+    @ManyToOne
+    // nullable = false exige que toda foto a la fuerza deba estar amarrada a un reporte existente
+    @JoinColumn(name = "reporte_id", nullable = false)
+    private ReporteCiudadano reporteCiudadano;
+
+    @Column(name = "url_archivo", nullable = false)
+    private String urlArchivo; // Aquí guardaremos la ruta física del archivo (ej: "/uploads/foto1.jpg")
+
+    @Column(name = "tipo_archivo", nullable = false, length = 10)
+    private String tipoArchivo; // Guardará explícitamente cadenas como 'FOTO' o 'VIDEO'
+
+    @Column(name = "fecha_subida", updatable = false)
+    private LocalDateTime fechaSubida = LocalDateTime.now();
+}
+
+// #########################################################
+// ARCHIVO: src\main\java\com\bomberos\emergencias\models\Incidente.java
+// #########################################################
+
+package com.bomberos.emergencias.models;
+
+import jakarta.persistence.*;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+
+@Data
+@Entity
+@Table(name="indicentes")
+public class Incidente {
+    @Id // Define que este atributo es la Clave Primaria (Primary Key)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // Configura el campo como Autoincrementable (SERIAL en Postgres)
+    private Long id;
+
+    // Mapea la columna, define que es única, no permite nulos y longitud máxima de 20 caracteres
+    @Column(name = "codigo_emergencia", unique = true, nullable = false, length = 20)
+    private String codigoEmergencia;
+
+    @Column(name = "tipo_emergencia", nullable = false, length = 50)
+    private String tipoEmergencia;
+
+    @Column(length = 20)
+    private String estado = "PENDIENTE"; // Por defecto, todo incidente inicia como PENDIENTE
+
+    @Column(length = 15)
+    private String prioridad = "MEDIA"; // Prioridad inicial por defecto
+
+    @Column(name = "resumen_ia", columnDefinition = "TEXT") // 'TEXT' permite guardar textos muy largos (el análisis de la IA)
+    private String resumenIa;
+
+    @Column(name = "fecha_creacion", updatable = false) // 'updatable = false' evita que esta fecha se modifique en los UPDATE
+    private LocalDateTime fechaCreacion = LocalDateTime.now(); // Captura la fecha y hora actual del servidor al crearse
+
+    @Column(name = "fecha_cierre")
+    private LocalDateTime fechaCierre;
+
+}
+
+
+// #########################################################
+// ARCHIVO: src\main\java\com\bomberos\emergencias\models\ReporteCiudadano.java
+// #########################################################
+
+package com.bomberos.emergencias.models;
+
+import jakarta.persistence.*;
+import lombok.Data;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Data
+@Entity
+@Table(name = "reportes_ciudadanos")
+public class ReporteCiudadano {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // RELACIÓN: Muchos reportes ciudadanos pueden pertenecer a un mismo Incidente Central
+    @ManyToOne // Relación Many-To-One (Muchos a Uno)
+    @JoinColumn(name = "incidente_id") // Define el nombre de la FK (Foreign Key) en la tabla
+    private Incidente incidente; // Si es null, significa que aún ningún bombero lo ha vinculado a un incidente global
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String descripcion;
+
+    // precision = 10 y scale = 8 significa: 10 dígitos en total, de los cuales 8 son decimales (Exactitud GPS)
+    @Column(nullable = false, precision = 10, scale = 8)
+    private BigDecimal latitud;
+
+    @Column(nullable = false, precision = 11, scale = 8)
+    private BigDecimal longitud;
+
+    @Column(name = "celular_reportero", length = 15)
+    private String celularReportero;
+
+    @Column(name = "fecha_reporte", updatable = false)
+    private LocalDateTime fechaReporte = LocalDateTime.now();
+}
+
+// #########################################################
+// ARCHIVO: src\main\java\com\bomberos\emergencias\repositories\EvidenciaMultimediaRepository.java
+// #########################################################
+
+package com.bomberos.emergencias.repositories;
+
+import com.bomberos.emergencias.models.EvidenciaMultimedia;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface EvidenciaMultimediaRepository extends JpaRepository<EvidenciaMultimedia, Long> {
+}
+
+// #########################################################
+// ARCHIVO: src\main\java\com\bomberos\emergencias\repositories\IncidenteRepository.java
+// #########################################################
+
+package com.bomberos.emergencias.repositories;
+
+import com.bomberos.emergencias.models.Incidente;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository // Le dice a Spring que este es un componente de persistencia (Acceso a Datos)
+// JpaRepository recibe: <Clase de la Entidad, Tipo de dato de su Clave Primaria>
+public interface IncidenteRepository extends JpaRepository<Incidente, Long> {
+    // Aquí adentro ya existen métodos listos como: save(), findById(), findAll(), delete()
+}
+
+// #########################################################
+// ARCHIVO: src\main\java\com\bomberos\emergencias\repositories\ReporteCiudadanoRepository.java
+// #########################################################
+
+package com.bomberos.emergencias.repositories;
+
+import com.bomberos.emergencias.models.ReporteCiudadano;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface ReporteCiudadanoRepository extends JpaRepository<ReporteCiudadano, Long> {
+}
+
+
+// #########################################################
+// ARCHIVO: src\main\java\com\bomberos\emergencias\services\ReporteService.java
+// #########################################################
+
+package com.bomberos.emergencias.services;
+
+import com.bomberos.emergencias.models.EvidenciaMultimedia;
+import com.bomberos.emergencias.models.ReporteCiudadano;
+import com.bomberos.emergencias.repositories.EvidenciaMultimediaRepository;
+import com.bomberos.emergencias.repositories.ReporteCiudadanoRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap; // <-- NUEVA IMPORTACIÓN
+import java.util.Map;     // <-- NUEVA IMPORTACIÓN
+import java.util.UUID;
+
+@Service
+public class ReporteService {
+
+    @Autowired
+    private ReporteCiudadanoRepository reporteRepository;
+
+    @Autowired
+    private EvidenciaMultimediaRepository evidenciaRepository;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
+
+    private final String CARPETA_UPLOADS = "uploads/";
+
+    public ReporteCiudadano registrarYNotificar(ReporteCiudadano reporte) {
+        // 1. Guardamos de forma segura en Postgres
+        ReporteCiudadano guardado = reporteRepository.save(reporte);
+
+        // 2. CONSTRUIMOS EL JSON MANUALMENTE COMO UN STRING PLANO
+        // Esto evita que Jackson o las librerías se confundan de método
+        String jsonPayload = "{" +
+                "\"id\":" + guardado.getId() + "," +
+                "\"descripcion\":\"" + guardado.getDescripcion().replace("\"", "\\\"") + "\"," +
+                "\"latitud\":\"" + guardado.getLatitud().toString() + "\"," +
+                "\"longitud\":\"" + guardado.getLongitud().toString() + "\"," +
+                "\"celularReportero\":\"" + (guardado.getCelularReportero() != null ? guardado.getCelularReportero() : "") + "\"," +
+                "\"fechaReporte\":\"" + guardado.getFechaReporte().toString() + "\"" +
+                "}";
+
+        System.out.println("--- ENVIANDO STRING POR WEBSOCKET: " + jsonPayload + " ---");
+
+        // Al pasarle un String, el método convertAndSend no tiene pérdida de tipos
+        messagingTemplate.convertAndSend("/topic/nuevos-reportes", jsonPayload);
+
+        return guardado;
+    }
+
+    @Async
+    public void guardarEvidenciasMultimediaAsincrono(ReporteCiudadano reporte, MultipartFile[] archivos) {
+        if (archivos == null || archivos.length == 0) return;
+
+        try {
+            Files.createDirectories(Paths.get(CARPETA_UPLOADS));
+        } catch (IOException e) {
+            System.err.println("Error creando carpeta: " + e.getMessage());
+        }
+
+        for (MultipartFile archivo : archivos) {
+            if (archivo.isEmpty()) continue;
+            try {
+                String nombreUnico = UUID.randomUUID().toString() + "_" + archivo.getOriginalFilename();
+                Path rutaCompleta = Paths.get(CARPETA_UPLOADS + nombreUnico);
+                Files.copy(archivo.getInputStream(), rutaCompleta);
+
+                EvidenciaMultimedia evidencia = new EvidenciaMultimedia();
+                evidencia.setReporteCiudadano(reporte);
+                evidencia.setUrlArchivo(rutaCompleta.toString());
+                evidencia.setTipoArchivo(archivo.getContentType() != null && archivo.getContentType().contains("video") ? "VIDEO" : "FOTO");
+
+                evidenciaRepository.save(evidencia);
+                System.out.println("--- HILO SECUNDARIO: Archivo guardado con éxito: " + nombreUnico + " ---");
+            } catch (IOException e) {
+                System.err.println("Error en segundo plano: " + e.getMessage());
+            }
+        }
+    }
+}
+
+// #########################################################
+// ARCHIVO: src\main\resources\application.properties
+// #########################################################
+
+#spring.application.name=emergencias
+# Configuración del servidor de Spring Boot
+server.port=8081
+
+# Conexión a PostgreSQL
+spring.datasource.url=jdbc:postgresql://localhost:5432/bomberos_db
+spring.datasource.username=postgres
+spring.datasource.password=admin
+
+# Configuración de JPA / Hibernate
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+# 'update' creará automáticamente las tablas faltantes si modificamos las entidades de Java
+spring.jpa.hibernate.ddl-auto=update
+# Muestra los comandos SQL en la consola de IntelliJ (útil para debuggear)
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+# Permitir subida de archivos multimedia (Fotos/Videos) de hasta 15MB
+spring.servlet.multipart.max-file-size=15MB
+spring.servlet.multipart.max-request-size=15MB
+
+// #########################################################
+// ARCHIVO: src\test\java\com\bomberos\emergencias\EmergenciasApplicationTests.java
+// #########################################################
+
+package com.bomberos.emergencias;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class EmergenciasApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
+

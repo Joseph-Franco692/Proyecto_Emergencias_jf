@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg0:#0a0c0f;
+  --bg1:#0f1218;
+  --bg2:#141820;
+  --bg3:#1c2230;
+  --bg4:#232b3a;
+  --border:#2a3348;
+  --border2:#3a4560;
+  --red:#ff3b3b;
+  --red2:#ff6b6b;
+  --redbg:rgba(255,59,59,0.12);
+  --amber:#f59e0b;
+  --amberbg:rgba(245,158,11,0.1);
+  --green:#22c55e;
+  --greenbg:rgba(34,197,94,0.1);
+  --blue:#3b82f6;
+  --bluebg:rgba(59,130,246,0.1);
+  --text:#e2e8f0;
+  --text2:#94a3b8;
+  --text3:#475569;
+  --accent:#ff4444;
+}
+body{
+  background:var(--bg0);
+  color:var(--text);
+  font-family:'Barlow',sans-serif;
+  font-size:13px;
+  height:800px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+
+/* TOP BAR */
+.topbar{
+  background:var(--bg1);
+  border-bottom:1px solid var(--border);
+  padding:0 16px;
+  height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+  z-index:10;
+}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.logo{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;
+  font-size:16px;
+  letter-spacing:0.5px;
+  color:#fff;
+  display:flex;align-items:center;gap:8px;
+}
+.logo-badge{
+  background:var(--red);
+  color:#fff;
+  font-size:10px;
+  font-weight:700;
+  padding:2px 6px;
+  border-radius:3px;
+  letter-spacing:1px;
+}
+.topbar-status{
+  display:flex;align-items:center;gap:6px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  color:var(--text2);
+  background:var(--bg2);
+  border:1px solid var(--border);
+  padding:4px 10px;
+  border-radius:4px;
+}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot.pulse{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.dot-green{background:var(--green)}
+.dot-red{background:var(--red)}
+.dot-amber{background:var(--amber)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.topbar-time{
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;
+  color:var(--text);
+  font-weight:600;
+}
+.topbar-date{font-size:11px;color:var(--text2)}
+
+/* LAYOUT */
+.main{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;
+  background:var(--bg1);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  flex-shrink:0;
+  overflow-y:auto;
+}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.sidebar-section{padding:12px 0}
+.sidebar-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:1.5px;
+  color:var(--text3);
+  padding:0 14px 6px;
+  text-transform:uppercase;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 14px;
+  cursor:pointer;
+  border-left:2px solid transparent;
+  transition:all 0.15s;
+  color:var(--text2);
+  font-size:12px;
+}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{
+  background:var(--redbg);
+  border-left-color:var(--red);
+  color:var(--red2);
+  font-weight:600;
+}
+.nav-icon{font-size:15px;width:18px;text-align:center}
+.nav-badge{
+  margin-left:auto;
+  background:var(--red);
+  color:#fff;
+  font-size:9px;
+  font-weight:700;
+  padding:1px 5px;
+  border-radius:10px;
+  min-width:18px;
+  text-align:center;
+}
+
+.stat-mini{
+  margin:4px 14px;
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:8px 10px;
+}
+.stat-mini-label{font-size:10px;color:var(--text3);margin-bottom:3px}
+.stat-mini-val{
+  font-family:'JetBrains Mono',monospace;
+  font-size:18px;
+  font-weight:600;
+  line-height:1;
+}
+.stat-mini-val.red{color:var(--red)}
+.stat-mini-val.green{color:var(--green)}
+.stat-mini-val.amber{color:var(--amber)}
+
+.thread-indicator{
+  margin:4px 14px;
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:8px 10px;
+}
+.thread-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.thread-label{font-size:10px;color:var(--text3)}
+.thread-bars{display:flex;gap:2px}
+.thread-bar{width:8px;height:16px;border-radius:2px;background:var(--border)}
+.thread-bar.active{background:var(--green)}
+.thread-bar.busy{background:var(--amber)}
+.ws-status{
+  margin:0 14px 8px;
+  display:flex;align-items:center;gap:6px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px;
+  color:var(--text2);
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:5px 8px;
+}
+
+/* CENTER — MAP */
+.map-area{
+  flex:1;
+  position:relative;
+  background:var(--bg2);
+  overflow:hidden;
+}
+.map-canvas{
+  width:100%;height:100%;
+  position:relative;
+  background:radial-gradient(ellipse at 50% 50%, #1a2235 0%, #0f1520 60%, #080c14 100%);
+}
+.map-grid{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+.map-overlay-text{
+  position:absolute;top:12px;left:12px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:2px;
+  color:rgba(59,130,246,0.3);
+  text-transform:uppercase;
+}
+/* Stylized street grid of SD */
+.street{position:absolute;background:rgba(100,120,160,0.15);border-radius:1px}
+/* Pins */
+.map-pin{
+  position:absolute;
+  cursor:pointer;
+  transform:translate(-50%,-50%);
+  animation:pin-appear 0.4s ease;
+}
+@keyframes pin-appear{from{transform:translate(-50%,-50%) scale(0)}to{transform:translate(-50%,-50%) scale(1)}}
+.pin-ring{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  animation:ring-pulse 2s ease-out infinite;
+}
+@keyframes ring-pulse{0%{width:12px;height:12px;opacity:0.8;margin:-6px 0 0 -6px}100%{width:50px;height:50px;opacity:0;margin:-25px 0 0 -25px}}
+.pin-dot{
+  width:14px;height:14px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,0.8);
+  position:relative;z-index:2;
+}
+.pin-dot.critical{background:var(--red)}
+.pin-dot.high{background:var(--amber)}
+.pin-dot.medium{background:var(--blue)}
+.pin-label{
+  position:absolute;
+  top:-24px;left:50%;
+  transform:translateX(-50%);
+  background:var(--bg1);
+  border:1px solid var(--border2);
+  color:var(--text);
+  font-size:9px;
+  font-weight:600;
+  padding:2px 6px;
+  border-radius:3px;
+  white-space:nowrap;
+  z-index:3;
+}
+.map-legend{
+  position:absolute;bottom:12px;left:12px;
+  background:rgba(10,12,15,0.85);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:8px 10px;
+}
+.map-legend-title{font-size:9px;font-weight:600;letter-spacing:1px;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text2);margin-bottom:3px}
+.legend-dot{width:8px;height:8px;border-radius:50%}
+.map-controls{
+  position:absolute;top:12px;right:12px;
+  display:flex;flex-direction:column;gap:4px;
+}
+.map-btn{
+  width:28px;height:28px;
+  background:var(--bg1);
+  border:1px solid var(--border);
+  border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  font-size:14px;
+  color:var(--text2);
+  transition:all 0.15s;
+}
+.map-btn:hover{background:var(--bg3);color:var(--text)}
+
+/* ALERTS PANEL */
+.alerts-panel{
+  width:300px;
+  background:var(--bg1);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;
+  flex-shrink:0;
+}
+.alerts-header{
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.alerts-title{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;
+  font-size:13px;
+  letter-spacing:0.5px;
+  display:flex;align-items:center;gap:8px;
+}
+.live-badge{
+  background:var(--red);
+  color:#fff;
+  font-size:9px;
+  font-weight:700;
+  padding:1px 6px;
+  border-radius:2px;
+  letter-spacing:1px;
+  animation:blink 1s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.5}}
+.alerts-count{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--text2);
+}
+.alerts-list{flex:1;overflow-y:auto;padding:8px}
+.alerts-list::-webkit-scrollbar{width:4px}
+.alerts-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.alert-card{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:10px;
+  margin-bottom:6px;
+  cursor:pointer;
+  transition:all 0.2s;
+  position:relative;
+  overflow:hidden;
+}
+.alert-card::before{
+  content:'';
+  position:absolute;left:0;top:0;bottom:0;
+  width:3px;
+}
+.alert-card.critical::before{background:var(--red)}
+.alert-card.high::before{background:var(--amber)}
+.alert-card.medium::before{background:var(--blue)}
+.alert-card:hover{background:var(--bg3);border-color:var(--border2)}
+.alert-card.new-alert{
+  animation:slide-in 0.4s ease;
+  border-color:var(--red);
+  box-shadow:0 0 12px rgba(255,59,59,0.15);
+}
+@keyframes slide-in{from{transform:translateY(-10px);opacity:0}to{transform:translateY(0);opacity:1}}
+.alert-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.alert-type{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;
+  font-size:13px;
+  letter-spacing:0.3px;
+}
+.alert-type.critical{color:var(--red2)}
+.alert-type.high{color:var(--amber)}
+.alert-type.medium{color:#60a5fa}
+.alert-time{
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px;
+  color:var(--text3);
+}
+.alert-desc{font-size:11px;color:var(--text2);margin-bottom:6px;line-height:1.4}
+.alert-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.alert-tag{
+  font-size:9px;
+  font-weight:600;
+  padding:2px 6px;
+  border-radius:3px;
+  letter-spacing:0.5px;
+}
+.tag-loc{background:var(--bg4);color:var(--text2)}
+.tag-ai{background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.2)}
+.tag-critical{background:var(--redbg);color:var(--red2)}
+.tag-high{background:var(--amberbg);color:var(--amber)}
+.tag-medium{background:var(--bluebg);color:#60a5fa}
+.alert-ai-row{
+  margin-top:6px;
+  padding-top:6px;
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:6px;
+  font-size:9px;
+  color:#a78bfa;
+}
+.ai-conf{font-family:'JetBrains Mono',monospace;font-weight:600}
+.alert-card.new-alert .alert-type::after{
+  content:'NEW';
+  font-size:8px;
+  background:var(--red);
+  color:#fff;
+  padding:1px 4px;
+  border-radius:2px;
+  margin-left:6px;
+}
+.bottombar{
+  height:32px;
+  background:var(--bg1);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 14px;
+  gap:16px;
+  flex-shrink:0;
+}
+.bottom-stat{
+  display:flex;align-items:center;gap:5px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  color:var(--text3);
+}
+.bottom-stat span{color:var(--text2)}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21V13a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v8"/><path d="M1 21h22"/><path d="M4 21V8l8-6 8 6v13"/><path d="M9 21v-5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5"/></svg>
+      COMANDO CENTRAL
+      <span class="logo-badge">OPERATIVO</span>
+    </div>
+    <div class="topbar-status">
+      <span class="dot dot-green pulse"></span>WS CONECTADO
+    </div>
+    <div class="topbar-status">
+      <span class="dot dot-green"></span>API OK
+    </div>
+    <div class="topbar-status">
+      <span class="dot dot-amber pulse"></span>4 HILOS ACTIVOS
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div style="text-align:right">
+      <div class="topbar-time" id="clock">--:--:--</div>
+      <div class="topbar-date">Santo Domingo · ECU</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Operaciones</div>
+    <div class="nav-item active">
+      <span class="nav-icon">🗺</span>Dashboard Táctico
+      <span class="nav-badge">7</span>
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon">🚨</span>Incidentes Activos
+      <span class="nav-badge">3</span>
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon">📋</span>Historial Reportes
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon">🚒</span>Unidades Despachadas
+    </div>
+  </div>
+
+  <div class="sidebar-section" style="border-top:1px solid var(--border)">
+    <div class="sidebar-label">Métricas Live</div>
+    <div class="stat-mini">
+      <div class="stat-mini-label">Reportes hoy</div>
+      <div class="stat-mini-val red">23</div>
+    </div>
+    <div class="stat-mini">
+      <div class="stat-mini-label">Unidades activas</div>
+      <div class="stat-mini-val amber">5 / 8</div>
+    </div>
+    <div class="stat-mini">
+      <div class="stat-mini-label">Tiempo resp. prom.</div>
+      <div class="stat-mini-val green">4m 12s</div>
+    </div>
+  </div>
+
+  <div class="sidebar-section" style="border-top:1px solid var(--border)">
+    <div class="sidebar-label">Pool de Hilos</div>
+    <div class="thread-indicator">
+      <div class="thread-row">
+        <div class="thread-label">ThreadPoolExecutor</div>
+      </div>
+      <div style="display:flex;gap:2px;flex-wrap:wrap" id="threads">
+      </div>
+      <div style="margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3)">
+        Core: 4 · Max: 8 · Queue: 2
+      </div>
+    </div>
+    <div class="ws-status">
+      <span class="dot dot-green pulse"></span>
+      /topic/nuevos-reportes
+    </div>
+  </div>
+
+  <div class="sidebar-section" style="border-top:1px solid var(--border)">
+    <div class="sidebar-label">Sistema</div>
+    <div class="nav-item">
+      <span class="nav-icon">🔬</span>IoT Sensores
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon">🤖</span>IA — Consola
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon">⚙️</span>Configuración
+    </div>
+  </div>
+</div>
+
+<!-- MAP CENTER -->
+<div class="map-area">
+  <div class="map-canvas">
+    <div class="map-grid"></div>
+    <div class="map-overlay-text">Santo Domingo · Mapa Táctico</div>
+
+    <!-- Stylized roads -->
+    <div class="street" style="left:0;top:45%;width:100%;height:3px;opacity:0.6"></div>
+    <div class="street" style="left:0;top:28%;width:100%;height:2px"></div>
+    <div class="street" style="left:0;top:68%;width:100%;height:2px"></div>
+    <div class="street" style="left:30%;top:0;width:2px;height:100%;opacity:0.6"></div>
+    <div class="street" style="left:55%;top:0;width:2px;height:100%;opacity:0.6"></div>
+    <div class="street" style="left:75%;top:0;width:2px;height:100%"></div>
+    <!-- Diagonal ave -->
+    <div class="street" style="left:10%;top:10%;width:50%;height:2px;transform:rotate(15deg);transform-origin:left center"></div>
+
+    <!-- Map Pins -->
+    <div class="map-pin" style="left:38%;top:42%">
+      <div class="pin-ring" style="background:rgba(255,59,59,0.2)"></div>
+      <div class="pin-dot critical"></div>
+      <div class="pin-label">🔥 INCENDIO CRÍTICO</div>
+    </div>
+    <div class="map-pin" style="left:58%;top:30%">
+      <div class="pin-ring" style="background:rgba(245,158,11,0.2)"></div>
+      <div class="pin-dot high"></div>
+      <div class="pin-label">⚠ FUGA GAS</div>
+    </div>
+    <div class="map-pin" style="left:25%;top:62%">
+      <div class="pin-dot medium"></div>
+      <div class="pin-label">📍 ACCIDENTE VIAL</div>
+    </div>
+    <div class="map-pin" style="left:70%;top:55%">
+      <div class="pin-dot medium"></div>
+      <div class="pin-label">📍 MATERIAL PELIGROSO</div>
+    </div>
+    <div class="map-pin" style="left:48%;top:70%">
+      <div class="pin-ring" style="background:rgba(255,59,59,0.15)"></div>
+      <div class="pin-dot critical"></div>
+      <div class="pin-label">🔥 INCENDIO FORESTAL</div>
+    </div>
+
+    <!-- Legend -->
+    <div class="map-legend">
+      <div class="map-legend-title">Severidad</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Crítico</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Alto</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Medio</div>
+    </div>
+
+    <!-- Map controls -->
+    <div class="map-controls">
+      <div class="map-btn">+</div>
+      <div class="map-btn">−</div>
+      <div class="map-btn">⌖</div>
+    </div>
+  </div>
+</div>
+
+<!-- ALERTS PANEL -->
+<div class="alerts-panel">
+  <div class="alerts-header">
+    <div class="alerts-title">
+      <i class="ti ti-bell-ringing" style="font-size:14px;color:var(--red)" aria-hidden="true"></i>
+      ALERTAS EN VIVO
+      <span class="live-badge">LIVE</span>
+    </div>
+    <div class="alerts-count" id="alert-count">7 activas</div>
+  </div>
+  <div class="alerts-list" id="alerts-list">
+
+    <div class="alert-card critical new-alert" onclick="sendPrompt('Muéstrame el panel de detalle del incendio en Av. Quito con IA')">
+      <div class="alert-top">
+        <div class="alert-type critical">🔥 INCENDIO ESTRUCTURAL</div>
+        <div class="alert-time">18:42:07</div>
+      </div>
+      <div class="alert-desc">Edificio residencial de 3 pisos con llamas visibles en planta alta. Posibles personas atrapadas.</div>
+      <div class="alert-meta">
+        <span class="alert-tag tag-loc">📍 Av. Quito km 3</span>
+        <span class="alert-tag tag-critical">CRÍTICO</span>
+      </div>
+      <div class="alert-ai-row">
+        <span>🤖 IA:</span>
+        <span class="ai-conf">Humo denso 94%</span>
+        <span style="color:var(--text3)">·</span>
+        <span style="color:var(--red2)">Peligro estructural</span>
+      </div>
+    </div>
+
+    <div class="alert-card high" onclick="sendPrompt('Ver detalle del incidente de fuga de gas')">
+      <div class="alert-top">
+        <div class="alert-type high">⚠️ FUGA DE GAS</div>
+        <div class="alert-time">18:39:52</div>
+      </div>
+      <div class="alert-desc">Olor a gas domiciliario detectado. Vecinos evacuando el sector preventivamente.</div>
+      <div class="alert-meta">
+        <span class="alert-tag tag-loc">📍 Calle Bolívar #245</span>
+        <span class="alert-tag tag-high">ALTO</span>
+      </div>
+      <div class="alert-ai-row">
+        <span>🤖 IA:</span>
+        <span class="ai-conf">Gas inflamable 78%</span>
+        <span style="color:var(--text3)">·</span>
+        <span style="color:var(--amber)">Zona de exclusión</span>
+      </div>
+    </div>
+
+    <div class="alert-card critical" onclick="sendPrompt('Ver detalle del incendio forestal')">
+      <div class="alert-top">
+        <div class="alert-type critical">🌲 INCENDIO FORESTAL</div>
+        <div class="alert-time">18:35:18</div>
+      </div>
+      <div class="alert-desc">Incendio de vegetación con propagación rápida hacia zona residencial sur. Viento fuerte.</div>
+      <div class="alert-meta">
+        <span class="alert-tag tag-loc">📍 Sector Las Palmas</span>
+        <span class="alert-tag tag-critical">CRÍTICO</span>
+      </div>
+      <div class="alert-ai-row">
+        <span>🤖 IA:</span>
+        <span class="ai-conf">Llamas activas 89%</span>
+        <span style="color:var(--text3)">·</span>
+        <span style="color:var(--red2)">Propagación alta</span>
+      </div>
+    </div>
+
+    <div class="alert-card medium">
+      <div class="alert-top">
+        <div class="alert-type medium">🚗 ACCIDENTE VIAL</div>
+        <div class="alert-time">18:28:44</div>
+      </div>
+      <div class="alert-desc">Colisión múltiple con heridos. Se requiere unidad de rescate con equipamiento médico.</div>
+      <div class="alert-meta">
+        <span class="alert-tag tag-loc">📍 Panamericana Norte</span>
+        <span class="alert-tag tag-medium">MEDIO</span>
+      </div>
+    </div>
+
+    <div class="alert-card medium">
+      <div class="alert-top">
+        <div class="alert-type medium">☣️ MAT. PELIGROSO</div>
+        <div class="alert-time">18:15:09</div>
+      </div>
+      <div class="alert-desc">Derrame de producto químico desconocido en vía pública. Personas con irritación ocular.</div>
+      <div class="alert-meta">
+        <span class="alert-tag tag-loc">📍 Zona Industrial</span>
+        <span class="alert-tag tag-medium">MEDIO</span>
+      </div>
+      <div class="alert-ai-row">
+        <span>🤖 IA:</span>
+        <span class="ai-conf">Sustancia corrosiva 71%</span>
+      </div>
+    </div>
+
+    <div class="alert-card high">
+      <div class="alert-top">
+        <div class="alert-type high">🏗 COLAPSO PARCIAL</div>
+        <div class="alert-time">17:58:33</div>
+      </div>
+      <div class="alert-desc">Derrumbe de pared medianera. Un herido atrapado bajo escombros.</div>
+      <div class="alert-meta">
+        <span class="alert-tag tag-loc">📍 Av. Tsáchila</span>
+        <span class="alert-tag tag-high">ALTO</span>
+      </div>
+    </div>
+
+    <div class="alert-card medium">
+      <div class="alert-top">
+        <div class="alert-type medium">💧 INUNDACIÓN</div>
+        <div class="alert-time">17:40:12</div>
+      </div>
+      <div class="alert-desc">Acumulación de agua por desbordamiento de canal. Viviendas afectadas.</div>
+      <div class="alert-meta">
+        <span class="alert-tag tag-loc">📍 Barrio El Carmen</span>
+        <span class="alert-tag tag-medium">MEDIO</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottombar">
+  <div class="bottom-stat">CPU: <span>34%</span></div>
+  <div class="bottom-stat">RAM: <span>1.2 GB</span></div>
+  <div class="bottom-stat">Hilos activos: <span id="thread-count">4 / 8</span></div>
+  <div class="bottom-stat">WS msgs/min: <span id="ws-msgs">23</span></div>
+  <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">
+    Cuerpo de Bomberos · Santo Domingo · v2.4.1
+  </div>
+</div>
+
+<script>
+// Clock
+function updateClock(){
+  const n=new Date();
+  document.getElementById('clock').textContent=
+    n.toLocaleTimeString('es-EC',{hour12:false});
+}
+updateClock();setInterval(updateClock,1000);
+
+// Thread bars
+const threadEl = document.getElementById('threads');
+function renderThreads(){
+  threadEl.innerHTML='';
+  for(let i=0;i<8;i++){
+    const b=document.createElement('div');
+    b.className='thread-bar'+(i<4?' active':i<6?' busy':'');
+    threadEl.appendChild(b);
+  }
+}
+renderThreads();
+
+// Live WS counter
+setInterval(()=>{
+  const v=Math.floor(18+Math.random()*12);
+  document.getElementById('ws-msgs').textContent=v;
+},3000);
+
+// Simulate new alert arriving via WebSocket
+setTimeout(()=>{
+  const list=document.getElementById('alerts-list');
+  const card=document.createElement('div');
+  card.className='alert-card critical new-alert';
+  card.innerHTML=`
+    <div class="alert-top">
+      <div class="alert-type critical">🔥 AMAGO DE INCENDIO</div>
+      <div class="alert-time">${new Date().toLocaleTimeString('es-EC',{hour12:false})}</div>
+    </div>
+    <div class="alert-desc">Humo saliendo de local comercial cerrado. Testigos reportan olor a quemado.</div>
+    <div class="alert-meta">
+      <span class="alert-tag tag-loc">📍 Mercado Central</span>
+      <span class="alert-tag tag-critical">NUEVO</span>
+    </div>
+    <div class="alert-ai-row">
+      <span>🤖 IA:</span>
+      <span class="ai-conf" style="animation:blink 0.5s infinite">Procesando...</span>
+    </div>`;
+  list.insertBefore(card,list.firstChild);
+  document.getElementById('alert-count').textContent='8 activas';
+},5000);
+</script>
+</body>
+</html>

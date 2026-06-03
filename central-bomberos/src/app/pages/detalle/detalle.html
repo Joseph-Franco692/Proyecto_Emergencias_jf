@@ -1,0 +1,55 @@
+<div class="detalle-container" *ngIf="reporteSeleccionado">
+    
+  <!-- Barra superior -->
+  <header class="detalle-cabecera">
+    <!-- routerLink="/" nos devuelve al Dashboard (Ruta vacía) -->
+    <button class="btn-volver" routerLink="/">← Volver al Mapa</button>
+    <span class="detalle-id">Incidente #{{ reporteSeleccionado.id }}</span>
+  </header>
+
+  <div class="detalle-contenido">
+    
+    <div class="detalle-info">
+      <h2 class="titulo-rojo">🔥 INCIDENTE ESTRUCTURAL Nivel Crítico</h2>
+      <p class="fecha-ubicacion">Reportado en: Lat: {{ reporteSeleccionado.latitud }} | Lng: {{ reporteSeleccionado.longitud }}</p>
+      
+      <h3 class="subtitulo">EVIDENCIA MULTIMEDIA</h3>
+      <div class="caja-multimedia">
+        <div class="evidencia-placeholder">📷 Evaluando Imágenes/Videos desde el servidor...</div>
+      </div>
+
+      <h3 class="subtitulo">METADATOS DEL REPORTE</h3>
+      <div class="grid-metadatos">
+        <div class="dato-caja">
+          <small>Reportado por / Teléfono</small>
+          <strong>{{ reporteSeleccionado.celularReportero || 'Ciudadano Anónimo' }}</strong>
+        </div>
+        <div class="dato-caja">
+          <small>Fecha de Ingreso al Sistema</small>
+          <strong>{{ reporteSeleccionado.fechaReporte | date:'medium' }}</strong>
+        </div>
+        <div class="dato-caja descripcion-ancha">
+          <small>Descripción del Ciudadano</small>
+          <p>{{ reporteSeleccionado.descripcion }}</p>
+        </div>
+      </div>
+
+      <button class="btn-despachar">🚒 DESPACHAR UNIDADES DE RESCATE</button>
+    </div>
+
+    <aside class="detalle-sidebar">
+      <div class="caja-ia">
+        <h4>🧠 MÓDULO IA - VISIÓN</h4>
+        <p>Procesamiento concurrente activo.</p>
+        <hr border-color="#30363d">
+        <small>Esperando evaluación de daños y propagación del fuego mediante IA.</small>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- Pantalla de Carga (Por si el internet está lento) -->
+<div class="cargando" *ngIf="!reporteSeleccionado">
+  <h2>📡 Conectando con la base de datos...</h2>
+</div>

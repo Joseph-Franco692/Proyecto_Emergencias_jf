@@ -1,0 +1,36 @@
+<div class="dashboard-container">
+  <aside>
+
+  </aside>
+
+  <main class="panel-central">
+    <header class="cabecera">
+      <h1>🧯 Comando Central Operativo</h1>
+    </header>
+
+    <div id="mapa-bomberos" class="mapa-contenedor"></div>
+  </main>
+
+  <aside class="panel-derecho">
+    <h2 class="titulo-alertas" > 🚨 Alertas en Vivo (Live)</h2>
+    
+    <div class="lista-reportes">
+      <div *ngFor="let rep of listaReportes" class="tarjeta-alerta clicable" [routerLink]="['/detalle', rep.id]">
+        <div class="tarjeta-header">
+          <span class="badge-fuego">🔥 INCIDENTE #{{ rep.id }}</span>
+          <span class="fecha">{{ rep.fechaReporte | date:'HH:mm:ss'}}</span>
+        </div>
+
+        <p class="descripcion">{{ rep.descripcion }}</p>
+
+        <div class="tarjeta-footer">
+          <span> Lat: {{ rep.latitud }} | Lng: {{ rep.longitud }}</span>
+        </div>
+
+      </div>
+    </div>
+
+
+  </aside>
+
+</div>

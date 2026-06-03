@@ -1,0 +1,221 @@
+=========================================================
+     ESTRUCTURA Y CÓDIGO FUENTE - PROYECTO ANGULAR
+=========================================================
+
+
+/* ######################################################### */
+/* ARCHIVO: src\index.html */
+/* ######################################################### */
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CentralBomberos</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>
+
+
+/* ######################################################### */
+/* ARCHIVO: src\main.ts */
+/* ######################################################### */
+
+import { bootstrapApplication } from '@angular/platform-browser';
+import { appConfig } from './app/app.config';
+import { AppComponent } from './app/app';
+
+bootstrapApplication(AppComponent, appConfig)
+  .catch((err) => console.error(err));
+
+
+/* ######################################################### */
+/* ARCHIVO: src\styles.css */
+/* ######################################################### */
+
+/* You can add global styles to this file, and also import other style files */
+
+
+/* ######################################################### */
+/* ARCHIVO: src\app\app.config.ts */
+/* ######################################################### */
+
+import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { provideRouter } from '@angular/router';
+
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideBrowserGlobalErrorListeners(),
+    provideRouter(routes)
+  ]
+};
+
+
+/* ######################################################### */
+/* ARCHIVO: src\app\app.css */
+/* ######################################################### */
+
+
+
+/* ######################################################### */
+/* ARCHIVO: src\app\app.html */
+/* ######################################################### */
+
+<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; background-color: #f4f6f9; min-height: 100vh;">
+  
+  <header style="background-color: #d32f2f; color: white; padding: 20px; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 25px;">
+    <h1 style="margin: 0; font-size: 24px;">🧯 Central Operativa - Cuerpo de Bomberos</h1>
+    <p style="margin: 5px 0 0 0; opacity: 0.9;">Panel de gestión de incidentes y reportes ciudadanos en tiempo real</p>
+  </header>
+
+  <main>
+    <h2 style="color: #333; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px;">
+      🚨 Alertas Entrantes (Real-Time)
+    </h2>
+    
+    <div *ngIf="listaReportes.length === 0" style="background-color: white; border: 1px dashed #bbb; padding: 20px; text-align: center; color: #666; border-radius: 6px; font-style: italic;">
+      Esperando incidencias de la ciudadanía... El canal de WebSockets se encuentra a la escucha de eventos.
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      
+      <div *ngFor="let rep of listaReportes" 
+           style="background-color: white; border-left: 6px solid #d32f2f; padding: 20px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: transform 0.2s;">
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+          <span style="font-weight: bold; color: #d32f2f;">📋 REPORTADO ID: #{{ rep.id }}</span>
+          <span style="color: #777; font-size: 0.9em;">📱 Reportero: <strong>{{ rep.celularReportero || 'Anónimo' }}</strong></span>
+        </div>
+
+        <p style="font-size: 16px; color: #222; margin: 10px 0;">
+          <strong>Detalle del suceso:</strong> {{ rep.descripcion }}
+        </p>
+        
+        <div style="background-color: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 13px; color: #555; display: flex; gap: 15px; margin-top: 10px;">
+          <span>📍 <strong>Latitud:</strong> {{ rep.latitud }}</span>
+          <span>📍 <strong>Longitud:</strong> {{ rep.longitud }}</span>
+          <span style="margin-left: auto; color: #888;">📅 {{ rep.fechaReporte }}</span>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+</div>
+
+/* ######################################################### */
+/* ARCHIVO: src\app\app.routes.ts */
+/* ######################################################### */
+
+import { Routes } from '@angular/router';
+
+export const routes: Routes = [];
+
+
+/* ######################################################### */
+/* ARCHIVO: src\app\app.ts */
+/* ######################################################### */
+
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common'; // <-- ESTO ARREGLA EL *ngIf, *ngFor Y EL PIPE date
+import { WebsocketService } from './services/websocket';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [CommonModule], // <-- REGISTRAMOS EL MODULO DE DIRECTIVAS COMUNES AQUÍ
+  templateUrl: './app.html',
+  styleUrls: ['./app.css']
+})
+export class AppComponent implements OnInit { // <-- CLASE COMPONENTE PRINCIPAL
+  title = 'Central Operativa de Bomberos';
+  public listaReportes: any[] = [];
+
+  // Inyectamos el servicio sin usar new() gracias a Angular
+  constructor(private wsService: WebsocketService) {}
+
+  ngOnInit(): void {
+    // Escuchamos el flujo del WebSocket en tiempo real
+    this.wsService.escucharNuevosReportes().subscribe({
+      next: (reporteRecibido) => {
+        console.log('🚨 ¡Nuevo reporte capturado en tiempo real!', reporteRecibido);
+        this.listaReportes.unshift(reporteRecibido); // Lo añade al inicio de la lista
+      },
+      error: (err) => console.error('Error al escuchar el flujo de datos:', err)
+    });
+  }
+}
+
+/* ######################################################### */
+/* ARCHIVO: src\app\services\websocket.ts */
+/* ######################################################### */
+
+import { Injectable } from '@angular/core';
+import { Client } from '@stomp/stompjs';
+import { Observable, Subject } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root' // Hace que el servicio sea un componente global (Singleton). Angular maneja su ciclo de vida y evita el uso de new() en los componentes.
+})
+export class WebsocketService {
+  private stompClient!: Client;
+  
+  // Un Subject funciona como un emisor y receptor de eventos intermedio. 
+  // Nos servirá para redirigir los datos que llegan del servidor hacia cualquier pantalla de Angular.
+  private reportesSubject: Subject<any> = new Subject<any>();
+
+  constructor() {
+    this.configurarWebSocket();
+  }
+
+  private configurarWebSocket() {
+    // Inicializamos el cliente de STOMP apuntando a la dirección exacta de tu servidor de Spring Boot (Puerto 8081)
+    this.stompClient = new Client({
+      brokerURL: 'ws://localhost:8081/ws-emergencias', // El endpoint que expusimos en Java
+      connectHeaders: {},
+      debug: (str) => console.log('STOMP Debug Log:', str), // Imprime en la consola del navegador los latidos y estados de la conexión
+      reconnectDelay: 5000, // Intento de reconexión automática cada 5 segundos si el servidor llega a caerse
+      heartbeatIncoming: 4000, // Validaciones de vida de conexión cada 4 segundos
+      heartbeatOutgoing: 4000
+    });
+
+    // Evento que se ejecuta automáticamente cuando la conexión se establece con éxito
+    this.stompClient.onConnect = (frame) => {
+      console.log('--- ¡CONECTADO CON ÉXITO AL WEBSOCKET DE BOMBEROS! ---');
+      
+      // NOS SUSCRIBIMOS al canal de transmisión de reportes creado en Spring Boot
+      this.stompClient.subscribe('/topic/nuevos-reportes', (message) => {
+        if (message.body) {
+          // Parseamos el string JSON que nos envía Spring Boot y lo transformamos en un objeto nativo de JavaScript
+          const nuevoReporte = JSON.parse(message.body);
+          
+          // Enviamos el objeto al flujo del Subject para que las pantallas se enteren
+          this.reportesSubject.next(nuevoReporte);
+        }
+      });
+    };
+
+    // Control de errores en el protocolo en tiempo real
+    this.stompClient.onStompError = (frame) => {
+      console.error('Error detectado en el Broker STOMP: ', frame.headers['message']);
+    };
+
+    // Activamos formalmente la conexión de la tubería de datos
+    this.stompClient.activate();
+  }
+
+  /**
+   * Este método expone el flujo del Subject como un Observable.
+   * Permitirá que las pantallas (Componentes) se queden "escuchando" indefinidamente las alertas entrantes.
+   */
+  public escucharNuevosReportes(): Observable<any> {
+    return this.reportesSubject.asObservable();
+  }
+}

@@ -1,0 +1,148 @@
+:host {
+  display: block;
+  height: 100vh;
+  background-color: #0d1117;
+  color: white;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.detalle-container {
+  padding: 30px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.cargando {
+  display: flex;
+  height: 100vh;
+  justify-content: center;
+  align-items: center;
+  color: #8b949e;
+}
+
+.detalle-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #30363d;
+  padding-bottom: 15px;
+  margin-bottom: 25px;
+}
+
+.btn-volver {
+  background: transparent;
+  color: #8b949e;
+  border: 1px solid #30363d;
+  padding: 8px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-volver:hover {
+  color: white;
+  border-color: white;
+  background-color: #161b22;
+}
+
+.detalle-id {
+  color: #8b949e;
+  font-family: monospace;
+}
+
+.detalle-contenido {
+  display: flex;
+  gap: 30px;
+}
+
+.detalle-info {
+  flex: 3;
+}
+
+.detalle-sidebar {
+  flex: 1;
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.titulo-rojo {
+  color: #ff4757;
+  margin: 0 0 5px 0;
+  font-size: 1.8rem;
+}
+
+.fecha-ubicacion {
+  color: #8b949e;
+  margin-top: 0;
+  margin-bottom: 30px;
+}
+
+.subtitulo {
+  color: #8b949e;
+  font-size: 0.85rem;
+  letter-spacing: 1.5px;
+  border-bottom: 1px solid #30363d;
+  padding-bottom: 8px;
+  margin-top: 25px;
+  margin-bottom: 15px;
+}
+
+.caja-multimedia {
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.evidencia-placeholder {
+  color: #8b949e;
+}
+
+.grid-metadatos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.dato-caja {
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  padding: 15px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.dato-caja small { color: #8b949e; margin-bottom: 5px; }
+.dato-caja strong, .dato-caja p { margin: 0; color: #e6edf3; }
+.descripcion-ancha { grid-column: span 2; }
+
+.btn-despachar {
+  width: 100%;
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  padding: 18px;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-top: 30px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.btn-despachar:hover {
+  background-color: #ff4757;
+}
+
+.caja-ia {
+  border: 1px dashed #d32f2f;
+  padding: 15px;
+  border-radius: 6px;
+  color: #e6edf3;
+}
+.caja-ia h4 {
+  color: #ff4757;
+  margin-top: 0;
+}

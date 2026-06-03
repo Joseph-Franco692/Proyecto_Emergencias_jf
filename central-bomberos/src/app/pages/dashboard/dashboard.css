@@ -1,0 +1,114 @@
+:host {
+    display: block;
+    height: 100%;
+    background-color: #0d1117;
+    color: white;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+    .dashboard-container {
+        display: flex;
+        height: 100%;
+    }
+
+    .panel-izquierdo {
+        width: 250px;
+        background-color: #161b22;
+        border-right: 1px solid #30363d;
+
+    }
+
+    .panel-central {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+
+    }
+
+    .cabecera {
+        padding: 15px 20px;
+        background-color: #161b22;
+        border-bottom: 1px solid #30363d;
+    }
+
+    .cabecera h1 {
+        margin: 0;
+        font-size: 1.2rem;
+        color: ff4757
+    }
+
+    /* El contenedor del mapa DEBE tener una altura definida, si no, no se ve */
+    .mapa-contenedor {
+        flex: 1;
+        /* Toma el resto de la altura disponible */
+        width: 100%;
+    }
+
+    /* 5. Panel Derecho (Tus reportes) */
+    .panel-derecho {
+        width: 350px;
+        /* Ancho fijo para la columna de alertas */
+        background-color: #161b22;
+        border-left: 1px solid #30363d;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .titulo-alertas {
+        padding: 15px;
+        margin: 0;
+        font-size: 1.1rem;
+        border-bottom: 1px solid #30363d;
+    }
+
+    .lista-reportes {
+        padding: 15px;
+        overflow-y: auto;
+        /* Si hay muchos reportes, agrega una barra de scroll */
+        flex: 1;
+    }
+
+    /* 6. Diseño de las Tarjetas de Reporte (Estilo oscuro) */
+    .tarjeta-alerta {
+        background-color: #0d1117;
+        border: 1px solid #ff4757;
+        /* Borde rojo estilo emergencia */
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .tarjeta-header {
+        display: flex;
+        justify-content: space-between;
+        /* Separa el ID a la izquierda y la hora a la derecha */
+        margin-bottom: 10px;
+    }
+
+    .badge-fuego {
+        color: #ff4757;
+        font-weight: bold;
+        font-size: 0.85rem;
+    }
+
+    .fecha {
+        color: #8b949e;
+        font-size: 0.85rem;
+    }
+
+    .descripcion {
+        font-size: 0.95rem;
+        line-height: 1.4;
+        margin-bottom: 10px;
+    }
+
+    .tarjeta-footer {
+        font-size: 0.8rem;
+        color: #8b949e;
+        background-color: #161b22;
+        padding: 5px;
+        border-radius: 4px;
+    }
+
+
+
+}

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg0:#0a0c0f;--bg1:#0f1218;--bg2:#141820;--bg3:#1c2230;--bg4:#232b3a;
+  --border:#2a3348;--border2:#3a4560;
+  --red:#ff3b3b;--red2:#ff6b6b;--redbg:rgba(255,59,59,0.12);
+  --amber:#f59e0b;--amberbg:rgba(245,158,11,0.1);
+  --green:#22c55e;--greenbg:rgba(34,197,94,0.1);
+  --blue:#3b82f6;--bluebg:rgba(59,130,246,0.1);
+  --purple:#a78bfa;--purplebg:rgba(167,139,250,0.1);
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#475569;
+}
+body{background:var(--bg0);color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;overflow-x:hidden}
+
+.topbar{background:var(--bg1);border-bottom:1px solid var(--border);padding:0 16px;height:44px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.back-btn{
+  display:flex;align-items:center;gap:6px;
+  font-size:12px;color:var(--text2);
+  background:var(--bg3);border:1px solid var(--border);
+  padding:4px 10px;border-radius:4px;cursor:pointer;
+}
+.back-btn:hover{color:var(--text)}
+.breadcrumb{font-size:12px;color:var(--text3)}
+.breadcrumb span{color:var(--text2)}
+.incident-id{
+  margin-left:auto;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:var(--text3);
+  background:var(--bg3);border:1px solid var(--border);
+  padding:3px 10px;border-radius:4px;
+}
+
+.layout{display:flex;gap:0;min-height:calc(100vh - 44px)}
+
+/* LEFT COL */
+.left-col{flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+
+/* SEVERITY BANNER */
+.severity-banner{
+  background:var(--redbg);
+  border:1px solid rgba(255,59,59,0.3);
+  border-radius:8px;
+  padding:12px 14px;
+  display:flex;align-items:center;gap:12px;
+}
+.sev-icon{font-size:24px}
+.sev-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;color:var(--red2);letter-spacing:0.5px}
+.sev-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.sev-right{margin-left:auto;text-align:right}
+.sev-badge{
+  background:var(--red);color:#fff;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;font-size:11px;letter-spacing:2px;
+  padding:4px 12px;border-radius:3px;
+  display:inline-block;margin-bottom:4px;
+  animation:pulse-red 1.5s infinite;
+}
+@keyframes pulse-red{0%,100%{box-shadow:0 0 0 0 rgba(255,59,59,0.4)}50%{box-shadow:0 0 0 6px rgba(255,59,59,0)}}
+.sev-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
+
+/* MEDIA GRID */
+.section-title{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:11px;font-weight:600;letter-spacing:1.5px;
+  color:var(--text3);text-transform:uppercase;
+  margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;
+}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.media-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.media-thumb{
+  aspect-ratio:16/10;
+  border-radius:6px;
+  border:1px solid var(--border);
+  overflow:hidden;
+  position:relative;
+  cursor:pointer;
+}
+.media-thumb:hover .media-overlay{opacity:1}
+.media-overlay{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,0.5);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity 0.2s;
+  font-size:20px;
+}
+.fire-sim{
+  width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;
+}
+.f1{background:linear-gradient(135deg,#1a0a00,#2d1000,#4a1a00)}
+.f2{background:linear-gradient(135deg,#0a0a1a,#0d1a2d,#152030)}
+.f3{background:linear-gradient(135deg,#1a1000,#2a2000,#1a1000)}
+.async-badge{
+  position:absolute;bottom:4px;right:4px;
+  background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);
+  color:var(--green);font-size:8px;font-weight:600;
+  padding:1px 5px;border-radius:2px;letter-spacing:0.5px;
+}
+.upload-badge{
+  position:absolute;bottom:4px;right:4px;
+  background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);
+  color:var(--amber);font-size:8px;font-weight:600;
+  padding:1px 5px;border-radius:2px;
+  display:flex;align-items:center;gap:3px;
+}
+.loading-spinner{
+  width:8px;height:8px;
+  border:1.5px solid var(--amber);
+  border-top-color:transparent;
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* METADATA */
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.meta-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;padding:10px 12px;
+}
+.meta-label{font-size:10px;color:var(--text3);margin-bottom:3px}
+.meta-value{font-size:12px;color:var(--text);font-weight:500}
+.meta-value.mono{font-family:'JetBrains Mono',monospace;font-size:11px;color:#60a5fa}
+.meta-value.red{color:var(--red2)}
+.coord-pair{display:flex;gap:8px}
+.coord-chip{
+  background:var(--bg3);border:1px solid var(--border2);
+  padding:3px 8px;border-radius:3px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:#60a5fa;
+}
+
+/* ACTION BTN */
+.dispatch-btn{
+  background:linear-gradient(135deg,#dc2626,#b91c1c);
+  color:#fff;border:none;
+  border-radius:8px;padding:14px 20px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;font-size:15px;letter-spacing:1px;
+  cursor:pointer;width:100%;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all 0.2s;
+  box-shadow:0 4px 20px rgba(220,38,38,0.3);
+}
+.dispatch-btn:hover{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 4px 24px rgba(220,38,38,0.5);transform:translateY(-1px)}
+.dispatch-btn:active{transform:translateY(0)}
+
+/* RIGHT COL — AI */
+.right-col{
+  width:320px;flex-shrink:0;
+  background:var(--bg1);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow-y:auto;
+}
+.right-col::-webkit-scrollbar{width:4px}
+.right-col::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.ai-header{
+  padding:14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;flex-shrink:0;
+}
+.ai-icon{
+  width:32px;height:32px;border-radius:6px;
+  background:var(--purplebg);border:1px solid rgba(167,139,250,0.2);
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.ai-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:var(--purple)}
+.ai-subtitle{font-size:10px;color:var(--text3)}
+.ai-badge{
+  margin-left:auto;
+  background:var(--purplebg);border:1px solid rgba(167,139,250,0.3);
+  color:var(--purple);font-size:9px;font-weight:600;
+  padding:2px 8px;border-radius:10px;letter-spacing:0.5px;
+}
+.ai-body{padding:12px;display:flex;flex-direction:column;gap:10px}
+
+/* AI SCORE */
+.ai-score-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;
+}
+.ai-score-label{font-size:10px;color:var(--text3);margin-bottom:6px;display:flex;justify-content:space-between}
+.ai-score-val{
+  font-family:'JetBrains Mono',monospace;
+  font-size:28px;font-weight:600;
+  color:var(--red2);
+  line-height:1;
+}
+.ai-score-sub{font-size:10px;color:var(--text3);margin-top:4px}
+.criticality-bar{
+  height:4px;background:var(--bg4);border-radius:2px;margin-top:8px;overflow:hidden;
+}
+.criticality-fill{height:100%;background:linear-gradient(90deg,var(--amber),var(--red));border-radius:2px;transition:width 1s ease}
+
+/* AI TAGS */
+.ai-tags{display:flex;flex-wrap:wrap;gap:6px}
+.ai-tag{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 10px;border-radius:5px;
+  font-size:10px;font-weight:600;
+  border:1px solid;
+}
+.ai-tag-conf{
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px;margin-left:2px;
+  font-weight:700;
+}
+.tag-danger{background:var(--redbg);border-color:rgba(255,59,59,0.25);color:var(--red2)}
+.tag-warn{background:var(--amberbg);border-color:rgba(245,158,11,0.25);color:var(--amber)}
+.tag-info{background:var(--bluebg);border-color:rgba(59,130,246,0.25);color:#60a5fa}
+
+/* AI BREAKDOWN */
+.breakdown-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 0;
+  border-bottom:1px solid var(--border);
+  font-size:11px;
+}
+.breakdown-item:last-child{border-bottom:none}
+.breakdown-name{color:var(--text2)}
+.breakdown-bar-wrap{display:flex;align-items:center;gap:6px;flex:1;margin-left:10px}
+.breakdown-bar{height:3px;background:var(--bg4);border-radius:2px;flex:1}
+.breakdown-fill{height:100%;border-radius:2px}
+.breakdown-pct{font-family:'JetBrains Mono',monospace;font-size:10px;min-width:32px;text-align:right}
+
+/* AI RECOMMENDATION */
+.ai-rec{
+  background:var(--bg2);border:1px solid var(--border);
+  border-left:3px solid var(--purple);
+  border-radius:6px;padding:10px 12px;
+  font-size:11px;color:var(--text2);line-height:1.5;
+}
+.ai-rec-title{color:var(--purple);font-weight:600;font-size:11px;margin-bottom:6px}
+
+/* AI PROCESSING INDICATOR */
+.ai-processing{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:6px;padding:8px 10px;
+  font-size:10px;color:var(--text3);
+}
+.proc-dots span{
+  display:inline-block;width:4px;height:4px;background:var(--purple);
+  border-radius:50%;margin-right:2px;
+  animation:dot-bounce 1.4s ease-in-out infinite;
+}
+.proc-dots span:nth-child(2){animation-delay:0.2s}
+.proc-dots span:nth-child(3){animation-delay:0.4s}
+@keyframes dot-bounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
+
+.model-info{
+  margin-top:auto;
+  padding:10px 12px;border-top:1px solid var(--border);
+  font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);
+  line-height:1.8;
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="back-btn">← Volver</div>
+  <div class="breadcrumb">Dashboard <span>/ Incidente #INC-20240531-0042</span></div>
+  <div class="incident-id">INC-20240531-0042</div>
+</div>
+
+<div class="layout">
+
+<!-- LEFT COL -->
+<div class="left-col">
+
+  <!-- Severity Banner -->
+  <div class="severity-banner">
+    <div class="sev-icon">🔥</div>
+    <div>
+      <div class="sev-title">INCENDIO ESTRUCTURAL — NIVEL 3</div>
+      <div class="sev-sub">Av. Quito km 3, Santo Domingo · Edificio residencial 3 pisos</div>
+    </div>
+    <div class="sev-right">
+      <div class="sev-badge">CRÍTICO</div>
+      <div class="sev-time">Reportado: 18:42:07 · Hace 4m 23s</div>
+    </div>
+  </div>
+
+  <!-- Media Evidence -->
+  <div>
+    <div class="section-title">
+      <span>Evidencia Multimedia</span>
+    </div>
+    <div class="media-grid">
+      <div class="media-thumb">
+        <div class="fire-sim f1" style="font-size:32px">🔥</div>
+        <div class="media-overlay">🔍</div>
+        <div class="async-badge">✓ ASYNC</div>
+      </div>
+      <div class="media-thumb">
+        <div class="fire-sim f3" style="font-size:26px">🌫</div>
+        <div class="media-overlay">🔍</div>
+        <div class="async-badge">✓ ASYNC</div>
+      </div>
+      <div class="media-thumb">
+        <div class="fire-sim f2" style="font-size:22px;color:#888">▶ VIDEO<br><span style="font-size:11px">00:47</span></div>
+        <div class="media-overlay">▶</div>
+        <div class="upload-badge"><div class="loading-spinner"></div>PROCESANDO</div>
+      </div>
+    </div>
+    <div style="font-size:9px;color:var(--text3);margin-top:5px;font-family:'JetBrains Mono',monospace">
+      📁 Almacenamiento asíncrono activo · Hilo secundario procesando /uploads/INC-0042/
+    </div>
+  </div>
+
+  <!-- Metadata -->
+  <div>
+    <div class="section-title"><span>Metadatos del Reporte</span></div>
+    <div class="meta-grid">
+      <div class="meta-card">
+        <div class="meta-label">Reportado por</div>
+        <div class="meta-value">Carlos Mendoza Vera</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">Teléfono</div>
+        <div class="meta-value mono">+593 99 481 7234</div>
+      </div>
+      <div class="meta-card" style="grid-column:1/-1">
+        <div class="meta-label">Coordenadas GPS (captura automática)</div>
+        <div class="coord-pair" style="margin-top:4px">
+          <div class="coord-chip">LAT: -0.252134</div>
+          <div class="coord-chip">LNG: -79.175822</div>
+          <div class="coord-chip">ACC: ±4m</div>
+        </div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">Fecha y hora (ECU)</div>
+        <div class="meta-value mono">2024-05-31 18:42:07</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">Estado</div>
+        <div class="meta-value red">● EN ATENCIÓN</div>
+      </div>
+      <div class="meta-card" style="grid-column:1/-1">
+        <div class="meta-label">Descripción del ciudadano</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5">
+          "El tercer piso está completamente en llamas, hay mucho humo negro. Vi a una señora asomada en la ventana del segundo piso pidiendo ayuda. El fuego empezó hace como 10 minutos."
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dispatch -->
+  <div style="margin-top:4px">
+    <div class="section-title"><span>Acción</span></div>
+    <button class="dispatch-btn" onclick="sendPrompt('Confirmar despacho de unidades para incendio INC-20240531-0042')">
+      🚒 DESPACHAR UNIDADES DE RESCATE
+    </button>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">
+      <button style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:7px;border-radius:5px;font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif">📞 Llamar</button>
+      <button style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:7px;border-radius:5px;font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif">📍 Navegar</button>
+      <button style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:7px;border-radius:5px;font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif">📋 Cerrar</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- RIGHT COL — AI -->
+<div class="right-col">
+  <div class="ai-header">
+    <div class="ai-icon">🤖</div>
+    <div>
+      <div class="ai-title">MÓDULO IA — VISIÓN</div>
+      <div class="ai-subtitle">Groq · llama-3.2-11b-vision</div>
+    </div>
+    <div class="ai-badge">ACTIVO</div>
+  </div>
+
+  <div class="ai-body">
+
+    <!-- Score -->
+    <div class="ai-score-card">
+      <div class="ai-score-label">
+        <span>Índice de criticidad</span>
+        <span style="color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:9px">Procesado en 1.2s</span>
+      </div>
+      <div class="ai-score-val">94.2%</div>
+      <div class="ai-score-sub">Confianza: muy alta · Requiere respuesta inmediata</div>
+      <div class="criticality-bar"><div class="criticality-fill" id="crit-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- AI Processing -->
+    <div class="ai-processing">
+      <div class="proc-dots">
+        <span></span><span></span><span></span>
+      </div>
+      <div>
+        <div style="color:var(--purple);font-weight:600;font-size:10px">Analizando video (hilo secundario)</div>
+        <div>Extrayendo frames · Estimando propagación</div>
+      </div>
+    </div>
+
+    <!-- Tags -->
+    <div>
+      <div class="section-title"><span>Etiquetas Tácticas</span></div>
+      <div class="ai-tags">
+        <div class="ai-tag tag-danger">🔴 Humo denso <span class="ai-tag-conf">94%</span></div>
+        <div class="ai-tag tag-danger">🔴 Peligro estructural <span class="ai-tag-conf">87%</span></div>
+        <div class="ai-tag tag-warn">🟡 Llamas activas <span class="ai-tag-conf">96%</span></div>
+        <div class="ai-tag tag-warn">🟡 Posibles atrapados <span class="ai-tag-conf">72%</span></div>
+        <div class="ai-tag tag-info">🔵 Edificio residencial <span class="ai-tag-conf">99%</span></div>
+        <div class="ai-tag tag-info">🔵 Noche / visib. baja <span class="ai-tag-conf">88%</span></div>
+      </div>
+    </div>
+
+    <!-- Breakdown -->
+    <div>
+      <div class="section-title"><span>Análisis por categoría</span></div>
+      <div>
+        <div class="breakdown-item">
+          <div class="breakdown-name">Intensidad de llamas</div>
+          <div class="breakdown-bar-wrap">
+            <div class="breakdown-bar"><div class="breakdown-fill" style="width:89%;background:var(--red)"></div></div>
+            <div class="breakdown-pct" style="color:var(--red2)">89%</div>
+          </div>
+        </div>
+        <div class="breakdown-item">
+          <div class="breakdown-name">Densidad de humo</div>
+          <div class="breakdown-bar-wrap">
+            <div class="breakdown-bar"><div class="breakdown-fill" style="width:94%;background:var(--red)"></div></div>
+            <div class="breakdown-pct" style="color:var(--red2)">94%</div>
+          </div>
+        </div>
+        <div class="breakdown-item">
+          <div class="breakdown-name">Riesgo de colapso</div>
+          <div class="breakdown-bar-wrap">
+            <div class="breakdown-bar"><div class="breakdown-fill" style="width:61%;background:var(--amber)"></div></div>
+            <div class="breakdown-pct" style="color:var(--amber)">61%</div>
+          </div>
+        </div>
+        <div class="breakdown-item">
+          <div class="breakdown-name">Propagación lateral</div>
+          <div class="breakdown-bar-wrap">
+            <div class="breakdown-bar"><div class="breakdown-fill" style="width:45%;background:var(--amber)"></div></div>
+            <div class="breakdown-pct" style="color:var(--amber)">45%</div>
+          </div>
+        </div>
+        <div class="breakdown-item">
+          <div class="breakdown-name">Personas visibles</div>
+          <div class="breakdown-bar-wrap">
+            <div class="breakdown-bar"><div class="breakdown-fill" style="width:72%;background:#60a5fa"></div></div>
+            <div class="breakdown-pct" style="color:#60a5fa">72%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recommendation -->
+    <div class="ai-rec">
+      <div class="ai-rec-title">🤖 Recomendación táctica</div>
+      Incendio de alto riesgo con posibles víctimas. Se recomienda <strong style="color:var(--text)">despacho inmediato</strong> de al menos 2 unidades con escala aérea. Priorizar rescate en piso 2 (ventana sur). Coordinar con EMSAM para atención médica preventiva. Establecer perímetro de seguridad 50m.
+    </div>
+
+  </div>
+
+  <div class="model-info">
+    Modelo: groq/llama-3.2-11b-vision-preview<br>
+    Frames procesados: 14 / estimado: 28<br>
+    Procesamiento: hilo-2 (async @Async)<br>
+    Latencia IA: 1.2s · Backend: 0.3s
+  </div>
+</div>
+
+</div>
+
+<script>
+setTimeout(()=>{
+  document.getElementById('crit-fill').style.width='94%';
+},300);
+</script>
+</body>
+</html>

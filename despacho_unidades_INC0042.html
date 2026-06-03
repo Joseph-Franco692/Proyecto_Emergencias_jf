@@ -1,0 +1,330 @@
+<h2 class="sr-only">Panel de confirmación de despacho de unidades para incendio INC-20240531-0042</h2>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{font-family:'Barlow',sans-serif;padding:1rem 0}
+.top-banner{
+  background:var(--color-background-danger);
+  border:1px solid var(--color-border-danger);
+  border-radius:var(--border-radius-lg);
+  padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:16px;
+}
+.banner-icon{font-size:24px;flex-shrink:0}
+.banner-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;color:var(--color-text-danger);letter-spacing:0.3px}
+.banner-sub{font-size:12px;color:var(--color-text-danger);opacity:0.8;margin-top:2px}
+.badge-dispatched{
+  margin-left:auto;
+  background:var(--color-text-danger);
+  color:#fff;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;font-size:11px;letter-spacing:1.5px;
+  padding:5px 12px;border-radius:4px;
+  white-space:nowrap;
+  animation:pulse-badge 1.5s ease-in-out infinite;
+}
+@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:0.6}}
+.section-label{
+  font-size:11px;font-weight:500;letter-spacing:1px;
+  color:var(--color-text-tertiary);
+  text-transform:uppercase;
+  margin-bottom:8px;
+  display:flex;align-items:center;gap:8px;
+}
+.section-label::after{content:'';flex:1;height:0.5px;background:var(--color-border-tertiary)}
+.units-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.unit-card{
+  background:var(--color-background-primary);
+  border:0.5px solid var(--color-border-tertiary);
+  border-radius:var(--border-radius-lg);
+  padding:12px;
+  cursor:pointer;
+  transition:border-color 0.15s;
+  position:relative;
+}
+.unit-card.selected{border:2px solid var(--color-border-success)}
+.unit-card.selected .unit-check{display:flex}
+.unit-check{
+  display:none;
+  position:absolute;top:8px;right:8px;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--color-background-success);
+  border:1px solid var(--color-border-success);
+  align-items:center;justify-content:center;
+  font-size:10px;color:var(--color-text-success);
+}
+.unit-icon{font-size:22px;margin-bottom:6px}
+.unit-id{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;font-weight:600;
+  color:var(--color-text-primary);
+  margin-bottom:3px;
+}
+.unit-type{font-size:11px;color:var(--color-text-secondary);margin-bottom:6px}
+.unit-eta{
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;font-weight:600;
+  color:var(--color-text-success);
+}
+.unit-status{font-size:10px;color:var(--color-text-tertiary);margin-top:1px}
+.unit-card.unavailable{opacity:0.45;cursor:not-allowed}
+.unavailable-label{font-size:10px;color:var(--color-text-danger);margin-top:4px;font-weight:500}
+
+.info-row{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;
+}
+.info-card{
+  background:var(--color-background-secondary);
+  border-radius:var(--border-radius-md);
+  padding:10px 12px;
+}
+.info-label{font-size:11px;color:var(--color-text-tertiary);margin-bottom:4px}
+.info-value{font-size:13px;color:var(--color-text-primary);font-weight:500}
+.info-value.mono{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--color-text-info)}
+.info-value.danger{color:var(--color-text-danger)}
+
+.instructions-area{
+  background:var(--color-background-primary);
+  border:0.5px solid var(--color-border-tertiary);
+  border-radius:var(--border-radius-lg);
+  padding:12px 14px;
+  margin-bottom:16px;
+}
+.instructions-area label{font-size:11px;color:var(--color-text-tertiary);font-weight:500;display:block;margin-bottom:6px}
+.instructions-area textarea{
+  width:100%;border:none;outline:none;resize:none;
+  font-family:'Barlow',sans-serif;font-size:13px;
+  color:var(--color-text-primary);
+  background:transparent;
+  line-height:1.5;
+}
+
+.confirm-btn{
+  width:100%;padding:14px;border:none;
+  background:var(--color-text-danger);
+  color:#fff;border-radius:var(--border-radius-lg);
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;font-size:16px;letter-spacing:0.8px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:opacity 0.2s,transform 0.1s;
+  margin-bottom:8px;
+}
+.confirm-btn:hover{opacity:0.9}
+.confirm-btn:active{transform:scale(0.99)}
+.confirm-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+
+.cancel-btn{
+  width:100%;padding:10px;
+  background:transparent;
+  color:var(--color-text-secondary);
+  border:0.5px solid var(--color-border-secondary);
+  border-radius:var(--border-radius-md);
+  font-family:'Barlow',sans-serif;font-size:13px;
+  cursor:pointer;transition:background 0.15s;
+}
+.cancel-btn:hover{background:var(--color-background-secondary)}
+
+.success-panel{
+  display:none;
+  background:var(--color-background-success);
+  border:1px solid var(--color-border-success);
+  border-radius:var(--border-radius-lg);
+  padding:20px;
+  text-align:center;
+}
+.success-panel.visible{display:block}
+.success-title{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;font-size:20px;
+  color:var(--color-text-success);
+  margin-bottom:6px;
+}
+.success-sub{font-size:13px;color:var(--color-text-success);opacity:0.8;margin-bottom:16px}
+.dispatch-log{
+  background:var(--color-background-primary);
+  border:0.5px solid var(--color-border-tertiary);
+  border-radius:var(--border-radius-md);
+  padding:10px 12px;text-align:left;
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:var(--color-text-secondary);
+  line-height:2;
+}
+.log-line{color:var(--color-text-success)}
+.eta-summary{
+  display:flex;justify-content:center;gap:16px;margin-top:14px;flex-wrap:wrap;
+}
+.eta-chip{
+  background:var(--color-background-secondary);
+  border:0.5px solid var(--color-border-tertiary);
+  border-radius:var(--border-radius-md);
+  padding:8px 14px;text-align:center;
+}
+.eta-chip-id{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--color-text-primary)}
+.eta-chip-val{font-size:12px;color:var(--color-text-success);font-weight:500;margin-top:2px}
+</style>
+
+<div class="wrap">
+
+<div class="top-banner" id="main-banner">
+  <div class="banner-icon">🔥</div>
+  <div>
+    <div class="banner-title">Incendio estructural — INC-20240531-0042</div>
+    <div class="banner-sub">Av. Quito km 3 · Criticidad IA: 94.2% · Posibles personas atrapadas</div>
+  </div>
+  <div class="badge-dispatched" id="status-badge">CONFIRMANDO</div>
+</div>
+
+<div id="dispatch-form">
+  <div class="section-label">Seleccionar unidades a despachar</div>
+  <div class="units-grid">
+    <div class="unit-card selected" onclick="toggleUnit(this,'B-01')" id="card-B01">
+      <div class="unit-check">✓</div>
+      <div class="unit-icon">🚒</div>
+      <div class="unit-id">B-01</div>
+      <div class="unit-type">Autobomba principal</div>
+      <div class="unit-eta">4 min</div>
+      <div class="unit-status">Disponible · Estación 1</div>
+    </div>
+    <div class="unit-card selected" onclick="toggleUnit(this,'B-03')" id="card-B03">
+      <div class="unit-check">✓</div>
+      <div class="unit-icon">🚒</div>
+      <div class="unit-id">B-03</div>
+      <div class="unit-type">Escala aérea</div>
+      <div class="unit-eta">5 min</div>
+      <div class="unit-status">Disponible · Estación 2</div>
+    </div>
+    <div class="unit-card selected" onclick="toggleUnit(this,'R-07')" id="card-R07">
+      <div class="unit-check">✓</div>
+      <div class="unit-icon">🚑</div>
+      <div class="unit-id">R-07</div>
+      <div class="unit-type">Rescate médico</div>
+      <div class="unit-eta">6 min</div>
+      <div class="unit-status">Disponible · Estación 1</div>
+    </div>
+    <div class="unit-card" onclick="toggleUnit(this,'B-05')" id="card-B05">
+      <div class="unit-check">✓</div>
+      <div class="unit-icon">🚒</div>
+      <div class="unit-id">B-05</div>
+      <div class="unit-type">Autobomba apoyo</div>
+      <div class="unit-eta">8 min</div>
+      <div class="unit-status">Disponible · Estación 3</div>
+    </div>
+    <div class="unit-card" onclick="toggleUnit(this,'Q-02')" id="card-Q02">
+      <div class="unit-check">✓</div>
+      <div class="unit-icon">☣️</div>
+      <div class="unit-id">Q-02</div>
+      <div class="unit-type">Materiales peligrosos</div>
+      <div class="unit-eta">10 min</div>
+      <div class="unit-status">Disponible · Estación 2</div>
+    </div>
+    <div class="unit-card unavailable">
+      <div class="unit-icon">🚒</div>
+      <div class="unit-id">B-02</div>
+      <div class="unit-type">Autobomba</div>
+      <div class="unavailable-label">En operación</div>
+      <div class="unit-status">INC-0039</div>
+    </div>
+  </div>
+
+  <div class="info-row">
+    <div class="info-card">
+      <div class="info-label">Destino</div>
+      <div class="info-value">Av. Quito km 3</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Coordenadas</div>
+      <div class="info-value mono">-0.252134, -79.175822</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Unidades seleccionadas</div>
+      <div class="info-value danger" id="unit-count">3 unidades</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">ETA estimado</div>
+      <div class="info-value mono" id="eta-val" style="color:var(--color-text-success)">4 – 6 min</div>
+    </div>
+  </div>
+
+  <div class="instructions-area">
+    <label>Instrucciones adicionales al operador</label>
+    <textarea rows="3">Priorizar rescate en ventana sur piso 2. Establecer perímetro 50m. Coordinar con EMSAM para atención de posibles quemados. IA detecta riesgo estructural 61% — acceso con precaución.</textarea>
+  </div>
+
+  <button class="confirm-btn" id="confirm-btn" onclick="confirmDispatch()">
+    <i class="ti ti-send" style="font-size:18px" aria-hidden="true"></i>
+    CONFIRMAR DESPACHO — 3 UNIDADES
+  </button>
+  <button class="cancel-btn">Cancelar</button>
+</div>
+
+<div class="success-panel" id="success-panel">
+  <div style="font-size:40px;margin-bottom:10px">✅</div>
+  <div class="success-title">Despacho confirmado</div>
+  <div class="success-sub">3 unidades en ruta · WebSocket notificado · Registro guardado</div>
+  <div class="dispatch-log" id="dispatch-log"></div>
+  <div class="eta-summary" id="eta-summary"></div>
+</div>
+
+</div>
+
+<script>
+const selectedUnits=new Set(['B-01','B-03','R-07']);
+const unitData={
+  'B-01':{label:'Autobomba principal',eta:'4 min'},
+  'B-03':{label:'Escala aérea',eta:'5 min'},
+  'R-07':{label:'Rescate médico',eta:'6 min'},
+  'B-05':{label:'Autobomba apoyo',eta:'8 min'},
+  'Q-02':{label:'Mat. peligrosos',eta:'10 min'},
+};
+function toggleUnit(card,id){
+  if(card.classList.contains('unavailable'))return;
+  if(selectedUnits.has(id)){selectedUnits.delete(id);card.classList.remove('selected')}
+  else{selectedUnits.add(id);card.classList.add('selected')}
+  updateMeta();
+}
+function updateMeta(){
+  const n=selectedUnits.size;
+  document.getElementById('unit-count').textContent=n+' unidad'+(n===1?'':'es');
+  const etas=Array.from(selectedUnits).map(u=>parseInt(unitData[u]?.eta||'99'));
+  const mn=Math.min(...etas),mx=Math.max(...etas);
+  document.getElementById('eta-val').textContent=mn===mx?mn+' min':mn+' – '+mx+' min';
+  const btn=document.getElementById('confirm-btn');
+  btn.disabled=n===0;
+  btn.textContent='';
+  const ic=document.createElement('i');ic.className='ti ti-send';ic.style.fontSize='18px';ic.setAttribute('aria-hidden','true');
+  btn.appendChild(ic);
+  btn.appendChild(document.createTextNode(' CONFIRMAR DESPACHO — '+n+' UNIDAD'+(n===1?'':'ES')));
+}
+function confirmDispatch(){
+  document.getElementById('confirm-btn').disabled=true;
+  document.getElementById('status-badge').textContent='DESPACHADO';
+  document.getElementById('status-badge').style.animation='none';
+
+  setTimeout(()=>{
+    document.getElementById('dispatch-form').style.display='none';
+    const sp=document.getElementById('success-panel');
+    sp.classList.add('visible');
+
+    const now=new Date().toLocaleTimeString('es-EC',{hour12:false});
+    const lines=[
+      `[${now}] DESPACHO CONFIRMADO · INC-20240531-0042`,
+      ...Array.from(selectedUnits).map(u=>`[${now}] → ${u} (${unitData[u].label}) · EN RUTA`),
+      `[${now}] WS /topic/despachos · NOTIFICADO`,
+      `[${now}] DB INSERT despachos · OK`,
+      `[${now}] Hilo async: notificación SMS reportero · ENCOLADO`,
+    ];
+    const log=document.getElementById('dispatch-log');
+    log.innerHTML=lines.map((l,i)=>`<div class="${i>0?'log-line':''}">${l}</div>`).join('');
+
+    const eta=document.getElementById('eta-summary');
+    Array.from(selectedUnits).forEach(u=>{
+      const c=document.createElement('div');c.className='eta-chip';
+      c.innerHTML=`<div class="eta-chip-id">${u}</div><div class="eta-chip-val">ETA ${unitData[u].eta}</div>`;
+      eta.appendChild(c);
+    });
+  },800);
+}
+updateMeta();
+</script>
