@@ -1,0 +1,887 @@
+/* ═══════════════════════════════════════════════════════
+   UNIDAD DASHBOARD — MOBILE FIRST OPERATOR INTERFACE
+   ═══════════════════════════════════════════════════════ */
+
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #0a0c0f;
+  color: #e2e8f0;
+  font-family: 'Barlow', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* CSS VARIABLES */
+:root {
+  --bg0: #0a0c0f;
+  --bg1: #0f1218;
+  --bg2: #141820;
+  --bg3: #1c2230;
+  --border: #2a3348;
+  --border2: #3a4560;
+  --red: #ff3b3b;
+  --amber: #f59e0b;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #475569;
+}
+
+.unidad-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ═══ TOPBAR ═══ */
+.u-topbar {
+  background: #0f1218;
+  border-bottom: 1px solid #2a3348;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.u-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.u-logo-icon {
+  font-size: 22px;
+}
+
+.u-logo-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.5px;
+}
+
+.u-logo-sub {
+  font-size: 10px;
+  color: #475569;
+  letter-spacing: 1.5px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.u-unit-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1.5px solid #22c55e;
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: rgba(34, 197, 94, 0.07);
+}
+
+.u-unit-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.u-unit-estado {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #fff;
+  letter-spacing: 0.5px;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+/* ═══ PHASES ═══ */
+.u-phase {
+  flex: 1;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ═══ FASE 1: SELECCIÓN ═══ */
+.u-phase-header {
+  text-align: center;
+  padding: 16px 0 8px;
+}
+
+.u-phase-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.u-phase-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.5px;
+  margin: 0 0 6px 0;
+}
+
+.u-phase-desc {
+  color: #94a3b8;
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.u-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  color: #94a3b8;
+  padding: 30px 0;
+}
+
+.u-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid #2a3348;
+  border-top-color: #ff3b3b;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.u-empty {
+  text-align: center;
+  padding: 30px;
+}
+
+.u-empty-icon { font-size: 36px; margin-bottom: 8px; }
+.u-empty-text { color: #f59e0b; font-weight: 600; margin-bottom: 4px; }
+.u-empty-sub { color: #475569; font-size: 12px; }
+
+.u-unidades-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.u-unit-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #141820;
+  border: 1.5px solid #2a3348;
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s ease;
+  width: 100%;
+  font-family: 'Barlow', sans-serif;
+}
+
+.u-unit-card.estado-disponible:hover {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.06);
+  transform: translateX(3px);
+}
+
+.u-unit-card.estado-ruta,
+.u-unit-card.estado-sitio {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.u-card-icon {
+  font-size: 26px;
+  flex-shrink: 0;
+}
+
+.u-card-nombre {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #e2e8f0;
+  flex: 1;
+}
+
+.u-card-tipo {
+  font-size: 11px;
+  color: #475569;
+  margin-top: 2px;
+}
+
+.u-card-estado {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.8px;
+}
+
+.u-card-estado.green { color: #22c55e; }
+.u-card-estado.amber { color: #f59e0b; }
+.u-card-estado.blue  { color: #3b82f6; }
+
+/* ═══ FASE 2: ESPERA ═══ */
+.u-phase-espera {
+  justify-content: center;
+  align-items: center;
+  padding: 30px 16px;
+}
+
+.u-espera-card {
+  background: #0f1218;
+  border: 1.5px solid #2a3348;
+  border-radius: 14px;
+  padding: 30px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.u-espera-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+}
+
+.u-espera-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(34, 197, 94, 0.5);
+  animation: espera-pulse 2s ease-out infinite;
+}
+
+@keyframes espera-pulse {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.u-espera-icon {
+  font-size: 36px;
+  position: relative;
+  z-index: 1;
+}
+
+.u-espera-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #22c55e;
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+.u-espera-desc {
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.u-espera-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.u-meta-item {
+  background: #1c2230;
+  border: 1px solid #2a3348;
+  border-radius: 8px;
+  padding: 10px 8px;
+}
+
+.u-meta-label {
+  font-size: 9px;
+  color: #475569;
+  letter-spacing: 1.5px;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 4px;
+}
+
+.u-meta-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e2e8f0;
+  word-break: break-word;
+}
+
+.u-meta-val.green { color: #22c55e; }
+
+.u-ws-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #475569;
+  font-family: 'JetBrains Mono', monospace;
+  background: #141820;
+  border: 1px solid #2a3348;
+  border-radius: 6px;
+  padding: 7px 12px;
+  width: 100%;
+  justify-content: center;
+}
+
+.u-ws-dot {
+  width: 7px;
+  height: 7px;
+  background: #22c55e;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: ws-blink 1.5s ease-in-out infinite;
+}
+
+@keyframes ws-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.u-back-btn {
+  background: transparent;
+  border: 1px solid #2a3348;
+  color: #94a3b8;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: 'Barlow', sans-serif;
+  transition: all 0.15s;
+}
+
+.u-back-btn:hover {
+  background: #1c2230;
+  color: #e2e8f0;
+}
+
+/* ═══ FASE 3: RUTA ACTIVA ═══ */
+.u-phase-ruta {
+  gap: 12px;
+  padding-bottom: 30px;
+}
+
+.u-ruta-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 59, 59, 0.12);
+  border: 1.5px solid rgba(255, 59, 59, 0.4);
+  border-radius: 10px;
+  padding: 14px 16px;
+  animation: ruta-flash 2s ease-in-out 3;
+}
+
+@keyframes ruta-flash {
+  0%, 100% { background: rgba(255,59,59,0.12); }
+  50% { background: rgba(255,59,59,0.22); }
+}
+
+.u-ruta-alert-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  animation: shake 0.5s ease-in-out 6;
+}
+
+@keyframes shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+.u-ruta-alert-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ff6b6b;
+  letter-spacing: 0.5px;
+}
+
+.u-ruta-alert-sub {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.u-emergency-card {
+  background: #0f1218;
+  border: 1.5px solid #2a3348;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.u-ec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.u-ec-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #475569;
+}
+
+.u-ec-estado {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: #fff;
+  letter-spacing: 0.5px;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+.u-ec-desc {
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.u-ec-coords {
+  display: flex;
+  gap: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #475569;
+  flex-wrap: wrap;
+}
+
+.u-ec-tel {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.u-nav-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.u-nav-stat {
+  background: #0f1218;
+  border: 1px solid #2a3348;
+  border-radius: 10px;
+  padding: 14px 16px;
+  text-align: center;
+}
+
+.u-nav-stat-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #ff3b3b;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.u-nav-stat-label {
+  font-size: 10px;
+  color: #475569;
+  letter-spacing: 1px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.u-mapa-container {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #2a3348;
+}
+
+.u-mapa {
+  height: 260px;
+  width: 100%;
+  background: #141820;
+}
+
+.u-mapa-label {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 12, 15, 0.85);
+  border: 1px solid #2a3348;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 11px;
+  color: #94a3b8;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+}
+
+.u-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.u-finalizado-msg {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.u-finalizado-msg.error {
+  background: rgba(255, 59, 59, 0.1);
+  border-color: rgba(255, 59, 59, 0.3);
+  color: #ff6b6b;
+}
+
+.u-action-sitio {
+  width: 100%;
+  background: #0f1218;
+  border: 1.5px solid #f59e0b;
+  color: #f59e0b;
+  padding: 14px;
+  border-radius: 10px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.u-action-sitio:hover {
+  background: rgba(245, 158, 11, 0.1);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25);
+}
+
+.u-action-finalizar {
+  width: 100%;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border: none;
+  color: #fff;
+  padding: 16px;
+  border-radius: 10px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.u-action-finalizar:hover:not(:disabled) {
+  box-shadow: 0 0 24px rgba(34, 197, 94, 0.35);
+}
+
+.u-action-finalizar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.u-btn-spinner {
+  display: inline-block;
+  animation: spin 0.6s linear infinite;
+  font-size: 18px;
+}
+
+/* ─── INSTRUCCIÓN DE GIRO (estilo GPS) ─── */
+.u-instruccion-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #0f1218;
+  border: 1.5px solid #ff3b3b;
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 0 20px rgba(255, 59, 59, 0.2);
+  min-height: 58px;
+}
+
+.u-instruccion-bar.calculando {
+  border-color: #f59e0b;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+}
+
+.u-instruccion-icon {
+  font-size: 26px;
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: center;
+}
+
+.u-instruccion-texto {
+  flex: 1;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.3px;
+  line-height: 1.3;
+}
+
+.u-recalc-btn {
+  background: #1c2230;
+  border: 1px solid #2a3348;
+  color: #94a3b8;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.u-recalc-btn:hover {
+  background: #232b3a;
+  color: #e2e8f0;
+}
+
+/* ─── 3 STATS (tiempo, km, estimado) ─── */
+.u-nav-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.u-nav-stat {
+  background: #0f1218;
+  border: 1px solid #2a3348;
+  border-radius: 10px;
+  padding: 12px 10px;
+  text-align: center;
+}
+
+.u-nav-stat.accent {
+  border-color: rgba(255, 59, 59, 0.4);
+  background: rgba(255, 59, 59, 0.06);
+}
+
+.u-nav-stat-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ff3b3b;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
+}
+
+.u-nav-stat-label {
+  font-size: 9px;
+  color: #475569;
+  letter-spacing: 1px;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+
+/* ─── MAPA CONTAINER ─── */
+.u-mapa-container {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #2a3348;
+}
+
+.u-mapa {
+  height: 300px;
+  width: 100%;
+  background: #141820;
+}
+
+.u-mapa-ruta-badge {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 12, 15, 0.9);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 11px;
+  color: #22c55e;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.u-mapa-ruta-badge.calculando {
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #f59e0b;
+}
+
+/* ─── BOTÓN GOOGLE MAPS ─── */
+.u-gmaps-btn {
+  background: #1c2230;
+  border: 1px solid #2a3348;
+  color: #e2e8f0;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.u-gmaps-btn:hover {
+  background: #232b3a;
+  border-color: #3a4560;
+  transform: scale(1.05);
+}
+
+/* ─── ANIMACIÓN GPS PULSE PARA MARCADORES LEAFLET ─── */
+@keyframes gps-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(255,59,59,0.5), 0 4px 14px rgba(0,0,0,0.5); }
+  70%  { box-shadow: 0 0 0 12px rgba(255,59,59,0),   0 4px 14px rgba(0,0,0,0.5); }
+  100% { box-shadow: 0 0 0 0   rgba(255,59,59,0),    0 4px 14px rgba(0,0,0,0.5); }
+}
+
+/* Inyectar la animación gps-pulse a los elementos dentro del mapa Leaflet */
+.leaflet-container .leaflet-pane div[style*="gps-pulse"] {
+  animation: gps-pulse 2s ease-in-out infinite !important;
+}
+
+/* Fix: Asegurar que Leaflet renderice correctamente en contenedor flex */
+.leaflet-container {
+  background: #141820 !important;
+}
+/* --- CUSTOM MODALS --- */
+.u-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.u-modal {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.u-modal-title {
+  color: #f8fafc;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.5rem;
+  margin: 0 0 10px 0;
+  font-weight: 600;
+}
+
+.u-modal-desc {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.u-modal-label {
+  display: block;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.u-modal-input, .u-modal-textarea {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 12px;
+  color: #f8fafc;
+  font-size: 1rem;
+  font-family: 'Barlow', sans-serif;
+  transition: all 0.2s;
+}
+
+.u-modal-input:focus, .u-modal-textarea:focus {
+  outline: none;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.u-modal-textarea {
+  resize: vertical;
+}
+
+.u-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.u-btn-cancel, .u-btn-confirm {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Barlow', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.u-btn-cancel {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.u-btn-cancel:hover {
+  background: #475569;
+}
+
+.u-btn-confirm {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.u-btn-confirm:hover {
+  background: #dc2626;
+}

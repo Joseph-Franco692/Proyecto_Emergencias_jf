@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<div class="login-bg">
+  <!-- Animated background particles -->
+  <div class="particles">
+    <div class="particle p1"></div>
+    <div class="particle p2"></div>
+    <div class="particle p3"></div>
+    <div class="particle p4"></div>
+    <div class="particle p5"></div>
+  </div>
+
+  <div class="login-card">
+    <!-- Header Brand -->
+    <div class="login-brand">
+      <div class="brand-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2C10.5 4.5 8 7 8 10a4 4 0 0 0 8 0c0-3-2.5-5.5-4-8z" fill="#ff4444"/>
+          <path d="M12 6c-.5 1.5-2 3-2 4.5a2 2 0 0 0 4 0C14 9 12.5 7.5 12 6z" fill="#ffaa44"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">CENTRAL DE BOMBEROS</div>
+        <div class="brand-sub">Santo Domingo · Ecuador</div>
+      </div>
+    </div>
+
+    <div class="login-divider"></div>
+
+    <div class="login-title">
+      <h1>Acceso al Sistema</h1>
+      <p>Identifícate con tu cuenta institucional de Google para ingresar al sistema de comando.</p>
+    </div>
+
+    <!-- Google Button -->
+    <div class="google-btn-wrapper">
+      <div id="google-btn-container"></div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="login-loading" *ngIf="isLoading">
+      <div class="loader-ring"></div>
+      <span>Verificando identidad...</span>
+    </div>
+
+    <!-- Error -->
+    <div class="login-error" *ngIf="error">
+      <span>⚠️ {{ error }}</span>
+    </div>
+
+    <div class="login-footer">
+      <span>🔒 Acceso restringido al personal autorizado del Cuerpo de Bomberos</span>
+    </div>
+  </div>
+</div>
+
+<!-- Google Identity Services Script -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>

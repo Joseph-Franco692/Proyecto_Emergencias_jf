@@ -1,1 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap');
+
 /* You can add global styles to this file, and also import other style files */
+
+.alert-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+  margin-bottom: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex-shrink: 0 !important;
+}
+
+/* Alert card styles are defined per-component in src/app/pages/dashboard/dashboard.css */

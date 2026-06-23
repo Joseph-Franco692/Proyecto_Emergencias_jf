@@ -1,55 +1,193 @@
+<div class="cargando" *ngIf="!reporteSeleccionado && !errorMessage">
+  <h2>📡 Conectando con la base de datos de bomberos...</h2>
+</div>
+
+<div class="cargando" *ngIf="errorMessage" style="flex-direction: column; gap: 20px; text-align: center; padding: 40px;">
+  <h2 style="color: var(--red2);">❌ Error de Conexión</h2>
+  <p style="color: var(--text2); max-width: 500px; line-height: 1.6; font-size: 14px;">{{ errorMessage }}</p>
+  <button class="back-btn" routerLink="/" style="margin-top: 10px;">← Volver al Mapa</button>
+</div>
+
 <div class="detalle-container" *ngIf="reporteSeleccionado">
-    
-  <!-- Barra superior -->
-  <header class="detalle-cabecera">
-    <!-- routerLink="/" nos devuelve al Dashboard (Ruta vacía) -->
-    <button class="btn-volver" routerLink="/">← Volver al Mapa</button>
-    <span class="detalle-id">Incidente #{{ reporteSeleccionado.id }}</span>
-  </header>
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="back-btn" routerLink="/">← Volver al Mapa</div>
+    <div class="breadcrumb">Dashboard <span>/ Incidente #INC-{{ reporteSeleccionado.id }}</span></div>
+    <div class="incident-id">INC-20260619-00{{ reporteSeleccionado.id }}</div>
+  </div>
 
-  <div class="detalle-contenido">
-    
-    <div class="detalle-info">
-      <h2 class="titulo-rojo">🔥 INCIDENTE ESTRUCTURAL Nivel Crítico</h2>
-      <p class="fecha-ubicacion">Reportado en: Lat: {{ reporteSeleccionado.latitud }} | Lng: {{ reporteSeleccionado.longitud }}</p>
-      
-      <h3 class="subtitulo">EVIDENCIA MULTIMEDIA</h3>
-      <div class="caja-multimedia">
-        <div class="evidencia-placeholder">📷 Evaluando Imágenes/Videos desde el servidor...</div>
-      </div>
-
-      <h3 class="subtitulo">METADATOS DEL REPORTE</h3>
-      <div class="grid-metadatos">
-        <div class="dato-caja">
-          <small>Reportado por / Teléfono</small>
-          <strong>{{ reporteSeleccionado.celularReportero || 'Ciudadano Anónimo' }}</strong>
+  <div class="layout">
+    <!-- LEFT COL -->
+    <div class="left-col">
+      <!-- Severity Banner -->
+      <div class="severity-banner" [ngClass]="classif.severity">
+        <div class="sev-icon">{{ classif.icon }}</div>
+        <div>
+          <div class="sev-title" [ngClass]="classif.severity">{{ classif.title }} — NIVEL {{ getSeverityLevel() }}</div>
+          <div class="sev-sub">Coordenadas del Suceso, Santo Domingo · Captura Automática Ciudadana</div>
         </div>
-        <div class="dato-caja">
-          <small>Fecha de Ingreso al Sistema</small>
-          <strong>{{ reporteSeleccionado.fechaReporte | date:'medium' }}</strong>
-        </div>
-        <div class="dato-caja descripcion-ancha">
-          <small>Descripción del Ciudadano</small>
-          <p>{{ reporteSeleccionado.descripcion }}</p>
+        <div class="sev-right">
+          <div class="sev-badge" [ngClass]="classif.severity">{{ classif.badge }}</div>
+          <div class="sev-time">Reportado: {{ formatTime(reporteSeleccionado.fechaReporte) }} · Hace 4m 23s</div>
         </div>
       </div>
 
-      <button class="btn-despachar">🚒 DESPACHAR UNIDADES DE RESCATE</button>
+      <!-- Media Evidence -->
+      <div>
+        <div class="section-title">
+          <span>Evidencia Multimedia</span>
+        </div>
+        <div class="media-grid">
+          <!-- Real uploaded files from the database -->
+          <div *ngFor="let ev of evidencias" class="media-thumb">
+            <img *ngIf="ev.tipoArchivo === 'FOTO'" [src]="getMediaUrl(ev.urlArchivo)" class="media-img" alt="Evidencia Ciudadana">
+            <video *ngIf="ev.tipoArchivo === 'VIDEO'" [src]="getMediaUrl(ev.urlArchivo)" class="media-img" controls style="width: 100%; height: 100%; object-fit: cover;"></video>
+            <div class="media-overlay" *ngIf="ev.tipoArchivo === 'FOTO'">🔍</div>
+          </div>
+          <!-- Fallback if no real files exist in the report -->
+          <div *ngIf="evidencias.length === 0" style="grid-column: 1 / -1; padding: 24px; background: rgba(255, 255, 255, 0.02); border: 1.2px dashed var(--border); border-radius: 8px; text-align: center; color: var(--text2);">
+            <span style="font-size: 20px; display: block; margin-bottom: 6px;">📁</span>
+            No se adjuntaron evidencias multimedia para este reporte.
+          </div>
+        </div>
+      </div>
+
+      <!-- Metadata -->
+      <div>
+        <div class="section-title"><span>Metadatos del Reporte</span></div>
+        <div class="meta-grid">
+          <div class="meta-card">
+            <div class="meta-label">Reportado por</div>
+            <div class="meta-value">{{ reporteSeleccionado.celularReportero ? 'Ciudadano Activo' : 'Ciudadano Anónimo' }}</div>
+          </div>
+          <div class="meta-card">
+            <div class="meta-label">Teléfono de Contacto</div>
+            <div class="meta-value mono">{{ reporteSeleccionado.celularReportero || 'No proporcionado' }}</div>
+          </div>
+          <div class="meta-card" style="grid-column:1/-1">
+            <div class="meta-label">Coordenadas GPS (captura automática)</div>
+            <div class="coord-pair" style="margin-top:4px">
+              <div class="coord-chip">LAT: {{ reporteSeleccionado.latitud }}</div>
+              <div class="coord-chip">LNG: {{ reporteSeleccionado.longitud }}</div>
+              <div class="coord-chip">ACC: ±4m</div>
+            </div>
+          </div>
+          <div class="meta-card">
+            <div class="meta-label">Fecha y hora de Registro (ECU)</div>
+            <div class="meta-value mono">{{ formatDateTime(reporteSeleccionado.fechaReporte) }}</div>
+          </div>
+          <div class="meta-card">
+            <div class="meta-label">Estado Operativo</div>
+            <div class="meta-value" [ngClass]="isDispatched ? 'green' : 'red'">
+              ● {{ isDispatched ? 'DESPACHADO / EN RUTA' : 'EN ATENCIÓN / EVALUANDO' }}
+            </div>
+          </div>
+          <div class="meta-card" style="grid-column:1/-1">
+            <div class="meta-label">Descripción del ciudadano</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5">
+              "{{ reporteSeleccionado.descripcion }}"
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dispatch button -->
+      <div style="margin-top:4px">
+        <div class="section-title"><span>Acción Operativa</span></div>
+
+        <!-- Dispatched units list -->
+        <div *ngIf="unidadesDespachadas.length > 0" class="unidades-despachadas-list">
+          <div *ngFor="let u of unidadesDespachadas" class="unidad-chip">
+            🚒 {{ u.nombre }}
+            <span class="unidad-chip-estado">EN RUTA</span>
+          </div>
+        </div>
+
+        <div *ngIf="despachoMensaje" class="despacho-feedback">{{ despachoMensaje }}</div>
+
+        <button class="dispatch-btn" [ngClass]="{ 'dispatched': isDispatched }" (click)="abrirModalDespacho()">
+          {{ isDispatched ? '✓ VER / GESTIONAR UNIDADES DESPACHADAS' : '🚒 DESPACHAR UNIDADES DE RESCATE' }}
+        </button>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">
+          <button style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:7px;border-radius:5px;font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif" (click)="llamarReportero()">📞 Llamar</button>
+          <button style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:7px;border-radius:5px;font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif" (click)="navegarCoordenadas()">📍 Navegar</button>
+          <button style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:7px;border-radius:5px;font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif" (click)="cerrarIncidente()">📋 Cerrar</button>
+        </div>
+      </div>
     </div>
 
-    <aside class="detalle-sidebar">
-      <div class="caja-ia">
-        <h4>🧠 MÓDULO IA - VISIÓN</h4>
-        <p>Procesamiento concurrente activo.</p>
-        <hr border-color="#30363d">
-        <small>Esperando evaluación de daños y propagación del fuego mediante IA.</small>
-      </div>
-    </aside>
+
 
   </div>
 </div>
 
-<!-- Pantalla de Carga (Por si el internet está lento) -->
-<div class="cargando" *ngIf="!reporteSeleccionado">
-  <h2>📡 Conectando con la base de datos...</h2>
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL DE DESPACHO DE UNIDADES BOMBERILES
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="mostrarModalDespacho" (click)="cerrarModalDespacho()">
+  <div class="modal-panel" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">🚒 DESPACHO DE UNIDADES</div>
+        <div class="modal-subtitle">Incidente #INC-{{ idIncidente }} · Selecciona las unidades a enviar</div>
+      </div>
+      <button class="modal-close-btn" (click)="cerrarModalDespacho()">✕</button>
+    </div>
+
+    <!-- Loading state -->
+    <div *ngIf="isLoadingUnidades" class="modal-loading">
+      <div class="loading-spinner"></div>
+      <span>Consultando unidades disponibles...</span>
+    </div>
+
+    <!-- Empty state -->
+    <div *ngIf="!isLoadingUnidades && unidadesDisponibles.length === 0 && !isDispatched" class="modal-empty">
+      <div style="font-size:32px; margin-bottom:8px;">🚧</div>
+      <div style="color: var(--amber); font-weight:600; margin-bottom:4px;">Sin unidades disponibles</div>
+      <div style="color:var(--text2); font-size:12px;">Todas las unidades están actualmente en ruta o en sitio.</div>
+    </div>
+
+    <!-- Units list -->
+    <div *ngIf="!isLoadingUnidades && unidadesDisponibles.length > 0" class="modal-units-list">
+      <div *ngFor="let unidad of unidadesDisponibles"
+           class="modal-unit-card"
+           [class.selected]="isUnidadSeleccionada(unidad.id)"
+           (click)="toggleUnidad(unidad.id)">
+        <div class="unit-select-indicator">
+          <div class="unit-checkbox" [class.checked]="isUnidadSeleccionada(unidad.id)">
+            <span *ngIf="isUnidadSeleccionada(unidad.id)">✓</span>
+          </div>
+        </div>
+        <div class="unit-icon">🚒</div>
+        <div class="unit-info">
+          <div class="unit-name">{{ unidad.nombre }}</div>
+          <div class="unit-tipo">{{ unidad.tipo }}</div>
+        </div>
+        <div class="unit-estado-chip">DISPONIBLE</div>
+      </div>
+    </div>
+
+    <!-- Feedback message -->
+    <div *ngIf="despachoMensaje" class="modal-feedback" [class.error]="despachoMensaje.startsWith('❌')">
+      {{ despachoMensaje }}
+    </div>
+
+    <!-- Footer actions -->
+    <div class="modal-footer">
+      <div class="modal-selection-count">
+        {{ unidadesSeleccionadas.size }} unidad(es) seleccionada(s)
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" (click)="cerrarModalDespacho()">Cancelar</button>
+        <button class="modal-btn-dispatch"
+                [disabled]="isDespachandoUnidades || unidadesSeleccionadas.size === 0"
+                (click)="confirmarDespacho()">
+          <span *ngIf="isDespachandoUnidades" class="btn-spinner">⟳</span>
+          <span *ngIf="!isDespachandoUnidades">🚒 CONFIRMAR DESPACHO</span>
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
+

@@ -1,0 +1,320 @@
+<div class="reportar-wrapper">
+  <!-- Navigation Header -->
+  <header class="reportar-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1 class="header-title">
+          <span class="icon-fire">🚒</span>
+          Reportar Emergencia
+        </h1>
+        <p class="header-subtitle">Cuerpo de Bomberos Santo Domingo</p>
+      </div>
+      <div class="header-progress" *ngIf="currentScreen < 5">
+        <span class="progress-text">Paso {{ currentScreen }} de 4</span>
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="(currentScreen / 4) * 100"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="reportar-container">
+    <div class="form-wrapper">
+      <!-- SCREEN 1: Tipo de emergencia -->
+      <div class="form-section" [class.active]="currentScreen === 1">
+        <div class="section-content">
+          <h2 class="section-title">¿Qué tipo de emergencia reportas?</h2>
+          <p class="section-desc">Selecciona la categoría que mejor describe la situación</p>
+
+          <div class="type-grid">
+            <div 
+              *ngFor="let t of tiposEmergencia" 
+              class="type-btn" 
+              [class.selected]="tipoSeleccionado === t.nombre"
+              (click)="seleccionarTipo(t.nombre)"
+            >
+              <div class="type-emoji">{{ t.emoji }}</div>
+              <span class="type-label">{{ t.nombre }}</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 2rem;">
+            <label class="form-label">Descripción de la emergencia</label>
+            <textarea 
+              class="form-input textarea" 
+              rows="5" 
+              maxlength="300"
+              [(ngModel)]="descripcionBreve"
+              placeholder="Describe brevemente lo que está ocurriendo. Incluye detalles importantes como número de personas, estructuras afectadas, etc..."
+            ></textarea>
+            <div class="char-count">{{ 300 - descripcionBreve.length }} caracteres restantes</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">📍 Ubicación de la Emergencia</label>
+            <div class="gps-info-card">
+              <div class="gps-icon">📍</div>
+              <div class="gps-details">
+                <div class="gps-label">Ubicación detectada</div>
+                <div class="gps-coords">
+                  <span class="coord">{{ latitud }}</span>
+                  <span class="coord-sep">·</span>
+                  <span class="coord">{{ longitud }}</span>
+                </div>
+                <div class="gps-accuracy" *ngIf="gpsStatus === 'GPS OK'">
+                  Precisión: ±{{ gpsAccuracy ? gpsAccuracy.toFixed(0) : '4' }} metros
+                </div>
+                <div class="gps-accuracy warning" *ngIf="gpsStatus === 'Obteniendo GPS...' || gpsStatus === 'Iniciando GPS...'">
+                  Obteniendo coordenadas exactas del dispositivo...
+                </div>
+                <div class="gps-accuracy error" *ngIf="gpsStatus !== 'GPS OK' && gpsStatus !== 'Obteniendo GPS...' && gpsStatus !== 'Iniciando GPS...'">
+                  Ubicación manual o predeterminada
+                </div>
+              </div>
+              <div class="gps-status-indicator">
+                <div [ngClass]="{
+                  'dot-green': gpsStatus === 'GPS OK',
+                  'dot-amber': gpsStatus === 'Obteniendo GPS...' || gpsStatus === 'Iniciando GPS...',
+                  'dot-red': gpsStatus !== 'GPS OK' && gpsStatus !== 'Obteniendo GPS...' && gpsStatus !== 'Iniciando GPS...'
+                }"></div>
+              </div>
+            </div>
+
+            <!-- Mapa para ajustar ubicación -->
+            <div style="margin-top: 12px;">
+              <span class="form-hint" style="display: block; margin-bottom: 8px; font-size: 11px; color: var(--text2); line-height: 1.4;">
+                Ubicación exacta del siniestro (fijada automáticamente por el GPS de tu dispositivo):
+              </span>
+              <div id="mapa-reportar" style="height: 220px; border-radius: 12px; border: 1.5px solid var(--border); overflow: hidden; z-index: 10;"></div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" (click)="goTo(2)" [disabled]="gpsStatus !== 'GPS OK'">
+              Siguiente: Evidencia <span class="arrow">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 2: Evidencia multimedia -->
+      <div class="form-section" [class.active]="currentScreen === 2">
+        <div class="section-content">
+          <h2 class="section-title">Agrega evidencia fotográfica o video</h2>
+          <p class="section-desc">Las imágenes y videos son cruciales para una respuesta rápida</p>
+
+          <div class="upload-zone" (click)="triggerFileInput()" [class.has-files]="selectedFilesPreviews.length > 0">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text">
+              <div class="upload-title">Cargar foto o video</div>
+              <div class="upload-subtitle">Haz clic o arrastra archivos aquí</div>
+              <div class="upload-hints">JPG, PNG, MP4 • Máx. 3 archivos • Máx. 50 MB c/u</div>
+            </div>
+          </div>
+          
+          <input 
+            type="file" 
+            id="file-input" 
+            style="display: none;" 
+            (change)="onFileSelected($event)" 
+            multiple 
+            accept="image/*,video/*"
+          >
+
+          <div class="media-gallery" *ngIf="selectedFilesPreviews.length > 0">
+            <div class="gallery-title">Evidencias cargadas ({{ selectedFilesPreviews.length }}/3)</div>
+            <div class="media-grid">
+              <div class="media-item" *ngFor="let fileInfo of selectedFilesPreviews; let i = index">
+                <img *ngIf="fileInfo.isImage" [src]="fileInfo.url" alt="Evidencia" class="media-thumb">
+                <div *ngIf="!fileInfo.isImage" class="media-video-icon">🎥</div>
+                <button class="remove-btn" (click)="removeFile(i); $event.stopPropagation()">×</button>
+              </div>
+              <button 
+                class="media-add-btn" 
+                *ngIf="selectedFilesPreviews.length < 3"
+                (click)="triggerFileInput()"
+              >
+                <span>+</span>
+                <span class="add-text">Agregar más</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <span class="info-icon">ℹ️</span>
+            <span class="info-text">Los archivos se analizarán con IA para detectar el tipo y severidad de la emergencia</span>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-secondary" (click)="goTo(1)">
+              <span class="arrow">←</span> Atrás
+            </button>
+            <button class="btn btn-primary" (click)="goTo(3)">
+              Siguiente: Contacto <span class="arrow">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 3: Detalles contacto -->
+      <div class="form-section" [class.active]="currentScreen === 3">
+        <div class="section-content">
+          <h2 class="section-title">Información de contacto</h2>
+          <p class="section-desc">Necesitamos poder contactarte para más detalles de la emergencia</p>
+
+          <div class="form-group">
+            <label class="form-label">Nombre completo</label>
+            <input 
+              type="text" 
+              class="form-input"
+              [(ngModel)]="nombreCompleto"
+              placeholder="Tu nombre completo"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Teléfono / Celular</label>
+            <input 
+              type="tel" 
+              class="form-input"
+              [(ngModel)]="telefono"
+              maxlength="15"
+              placeholder="+593 99 123 4567"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Dirección aproximada (opcional)</label>
+            <input 
+              type="text" 
+              class="form-input"
+              [(ngModel)]="direccionAproximada"
+              placeholder="Av. Principal, esquina con Calle Secundaria..."
+            >
+            <div class="form-hint">Completa esto si el GPS no es preciso o si quieres agregar más detalles de ubicación</div>
+          </div>
+
+          <div class="warning-box">
+            <span class="warning-icon">⚠️</span>
+            <span class="warning-text">Confirmas que esta es una emergencia real. Los reportes falsos pueden ser penalizados legalmente.</span>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-secondary" (click)="goTo(2)">
+              <span class="arrow">←</span> Atrás
+            </button>
+            <button class="btn btn-primary" (click)="goTo(4)">
+              Revisar y enviar <span class="arrow">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 4: Confirm + Send -->
+      <div class="form-section" [class.active]="currentScreen === 4">
+        <div class="section-content">
+          <h2 class="section-title">Confirma los datos antes de enviar</h2>
+          <p class="section-desc">Revisa que toda la información sea correcta</p>
+
+          <div class="review-card">
+            <div class="review-section">
+              <div class="review-title">Tipo de Emergencia</div>
+              <div class="review-value danger">
+                <span *ngIf="tipoSeleccionado === 'Incendio'">🔥</span>
+                <span *ngIf="tipoSeleccionado === 'Accidente'">🚗</span>
+                <span *ngIf="tipoSeleccionado === 'Gas / Quím.'">⚠️</span>
+                <span *ngIf="tipoSeleccionado === 'Derrumbe'">🏗</span>
+                <span *ngIf="tipoSeleccionado === 'Inundación'">💧</span>
+                <span *ngIf="tipoSeleccionado === 'Otro'">🆘</span>
+                {{ tipoSeleccionado }}
+              </div>
+            </div>
+
+            <div class="review-section">
+              <div class="review-title">Ubicación GPS</div>
+              <div class="review-value mono">
+                {{ latitud | number:'1.6-6' }} · {{ longitud | number:'1.6-6' }}
+              </div>
+            </div>
+
+            <div class="review-section">
+              <div class="review-title">Evidencias Adjuntas</div>
+              <div class="review-value">{{ selectedFiles.length }} archivo(s)</div>
+            </div>
+
+            <div class="review-section">
+              <div class="review-title">Nombre</div>
+              <div class="review-value">{{ nombreCompleto }}</div>
+            </div>
+
+            <div class="review-section">
+              <div class="review-title">Teléfono</div>
+              <div class="review-value mono">{{ telefono }}</div>
+            </div>
+
+            <div class="review-section" *ngIf="direccionAproximada">
+              <div class="review-title">Dirección</div>
+              <div class="review-value">{{ direccionAproximada }}</div>
+            </div>
+
+            <div class="review-section">
+              <div class="review-title">Descripción</div>
+              <div class="review-value description">{{ descripcionBreve }}</div>
+            </div>
+          </div>
+
+          <div class="info-box success">
+            <span class="info-icon">📡</span>
+            <span class="info-text">Se enviará al servidor en tiempo real. La central operativa será notificada inmediatamente vía WebSocket.</span>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-secondary" (click)="goTo(3)" [disabled]="isSubmitting">
+              <span class="arrow">←</span> Editar
+            </button>
+            <button 
+              class="btn btn-danger" 
+              [disabled]="isSubmitting" 
+              (click)="enviarReporte()"
+            >
+              <span *ngIf="isSubmitting" class="spinner">⟳</span>
+              <span *ngIf="!isSubmitting">🚒 ENVIAR EMERGENCIA AHORA</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREEN 5: Success -->
+      <div class="form-section" [class.active]="currentScreen === 5">
+        <div class="section-content success-content">
+          <div class="success-icon">✅</div>
+          <h2 class="success-title">¡REPORTE ENVIADO!</h2>
+          <p class="success-desc">Tu reporte fue recibido correctamente por la central operativa.<br>Los bomberos han sido notificados y están en camino.</p>
+
+          <div class="ticket-box">
+            <div class="ticket-label">Tu número de seguimiento</div>
+            <div class="ticket-id">{{ ticketId }}</div>
+            <div class="ticket-hint">Guarda este código para consultar el estado de tu reporte</div>
+          </div>
+
+          <div class="progress-steps">
+            <div class="step-item done">
+              <div class="step-icon">✓</div>
+              <div class="step-info">
+                <div class="step-label">Reporte recibido</div>
+                <div class="step-time">Hace unos segundos</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" style="background: linear-gradient(135deg, #22c55e, #16a34a);" (click)="resetearFormulario()">
+              ➕ Reportar otra emergencia
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,220 @@
+<!-- ═══════════════════════════════════════════════════════════════════
+     MÓDULO OPERADOR DE UNIDAD BOMBERIL — MOBILE FIRST
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="unidad-app">
+
+  <!-- ═══════════════ HEADER ALWAYS VISIBLE ═══════════════ -->
+  <div class="u-topbar">
+    <div class="u-logo">
+      <span class="u-logo-icon">🚒</span>
+      <div>
+        <div class="u-logo-title">BOMBEROS SDMC</div>
+        <div class="u-logo-sub">MÓDULO OPERADOR</div>
+      </div>
+    </div>
+    <div *ngIf="unidadActual" class="u-unit-badge" [style.borderColor]="getEstadoColor()">
+      <span class="u-unit-name">{{ unidadActual.nombre }}</span>
+      <span class="u-unit-estado" [style.background]="getEstadoColor()">{{ getEstadoLabel() }}</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ FASE 1: SELECCIÓN DE UNIDAD ═══════════════ -->
+  <div *ngIf="fase === 'seleccion'" class="u-phase u-phase-seleccion">
+    <div class="u-phase-header">
+      <div class="u-phase-icon">🔑</div>
+      <h1 class="u-phase-title">Identificar Unidad</h1>
+      <p class="u-phase-desc">Selecciona el vehículo que vas a operar en esta jornada</p>
+    </div>
+
+    <div *ngIf="isLoadingUnidades" class="u-loading">
+      <div class="u-spinner"></div>
+      <span>Cargando flota disponible...</span>
+    </div>
+
+    <div *ngIf="!isLoadingUnidades && todasLasUnidades.length === 0" class="u-empty">
+      <div class="u-empty-icon">🚧</div>
+      <div class="u-empty-text">No se encontraron unidades registradas.</div>
+      <div class="u-empty-sub">Verifica que el backend Spring Boot esté activo en el puerto 8081.</div>
+    </div>
+
+    <div class="u-unidades-grid" *ngIf="!isLoadingUnidades">
+      <button
+        *ngFor="let u of todasLasUnidades"
+        class="u-unit-card"
+        [class.estado-disponible]="u.estado === 'DISPONIBLE'"
+        [class.estado-ruta]="u.estado === 'EN_RUTA'"
+        [class.estado-sitio]="u.estado === 'EN_SITIO'"
+        [class.selected]="u.id === unidadActual?.id"
+        (click)="u.estado === 'DISPONIBLE' && intentarSeleccionarUnidad(u)">
+        <div class="u-card-icon">🚒</div>
+        <div class="u-card-info">
+          <div class="u-card-nombre">{{ u.nombre }}</div>
+          <div class="u-card-tipo">{{ u.tipo }}</div>
+        </div>
+        <div class="u-card-estado"
+             [class.green]="u.estado === 'DISPONIBLE'"
+             [class.amber]="u.estado === 'EN_RUTA'"
+             [class.blue]="u.estado === 'EN_SITIO'">
+          {{ u.estado === 'DISPONIBLE' ? '● DISPONIBLE' : u.estado === 'EN_RUTA' ? '● EN RUTA' : '● EN SITIO' }}
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ FASE 2: ESPERA DE DESPACHO ═══════════════ -->
+  <div *ngIf="fase === 'espera'" class="u-phase u-phase-espera">
+    <div class="u-espera-card">
+      <div class="u-espera-icon-wrap">
+        <div class="u-espera-pulse"></div>
+        <div class="u-espera-icon">📡</div>
+      </div>
+      <h2 class="u-espera-title">EN ESPERA DE DESPACHO</h2>
+      <p class="u-espera-desc">La unidad <strong>{{ unidadActual?.nombre }}</strong> está en espera.<br>Cuando la central asigne una emergencia, recibirás la alerta instantáneamente.</p>
+
+      <div class="u-espera-meta">
+        <div class="u-meta-item">
+          <div class="u-meta-label">UNIDAD</div>
+          <div class="u-meta-val">{{ unidadActual?.nombre }}</div>
+        </div>
+        <div class="u-meta-item">
+          <div class="u-meta-label">TIPO</div>
+          <div class="u-meta-val">{{ unidadActual?.tipo }}</div>
+        </div>
+        <div class="u-meta-item">
+          <div class="u-meta-label">ESTADO</div>
+          <div class="u-meta-val green">● {{ getEstadoLabel() }}</div>
+        </div>
+      </div>
+
+      <div class="u-ws-indicator">
+        <span class="u-ws-dot"></span>
+        WebSocket activo · Esperando evento de despacho central
+      </div>
+
+      <button class="u-back-btn" (click)="fase = 'seleccion'">← Cambiar unidad</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ FASE 3: RUTA ACTIVA ═══════════════ -->
+  <div *ngIf="fase === 'ruta'" class="u-phase u-phase-ruta">
+
+    <!-- Alerta de emergencia asignada -->
+    <div class="u-ruta-alert">
+      <span class="u-ruta-alert-icon">🚨</span>
+      <div style="flex:1; min-width:0;">
+        <div class="u-ruta-alert-title">¡EMERGENCIA ASIGNADA — EN RUTA!</div>
+        <div class="u-ruta-alert-sub">Incidente #{{ emergenciaActual?.reporteId }} · Diríjanse al sitio</div>
+      </div>
+      <!-- Botón abrir en Google Maps / Waze como respaldo -->
+      <button class="u-gmaps-btn" (click)="abrirEnGoogleMaps()" title="Abrir en Google Maps">
+        🗺️
+      </button>
+    </div>
+
+    <!-- ─── BARRA DE INSTRUCCIÓN DE GIRO (estilo GPS) ─── -->
+    <div class="u-instruccion-bar" [class.calculando]="isCalculandoRuta">
+      <div class="u-instruccion-icon">{{ instruccionIcono }}</div>
+      <div class="u-instruccion-texto">{{ instruccionActual }}</div>
+      <button *ngIf="!isCalculandoRuta" class="u-recalc-btn" (click)="calcularRutaOSRM()" title="Recalcular ruta">
+        🔄
+      </button>
+    </div>
+
+    <!-- ─── STATS DE NAVEGACIÓN ─── -->
+    <div class="u-nav-stats">
+      <div class="u-nav-stat">
+        <div class="u-nav-stat-val">{{ tiempoEnRuta }}</div>
+        <div class="u-nav-stat-label">Tiempo en ruta</div>
+      </div>
+      <div class="u-nav-stat accent">
+        <div class="u-nav-stat-val">{{ distanciaRutaKm !== '...' ? distanciaRutaKm : distanciaKm }}</div>
+        <div class="u-nav-stat-label">km por calles</div>
+      </div>
+      <div class="u-nav-stat">
+        <div class="u-nav-stat-val">{{ duracionEstimada }}</div>
+        <div class="u-nav-stat-label">Tiempo est.</div>
+      </div>
+    </div>
+
+    <!-- ─── MAPA LEAFLET ─── -->
+    <div class="u-mapa-container">
+      <div id="mapa-unidad" class="u-mapa"></div>
+      <!-- Badge de estado de ruta sobre el mapa -->
+      <div class="u-mapa-ruta-badge" *ngIf="rutaCalculada">
+        ✓ Ruta por calles activa · Se actualiza automáticamente
+      </div>
+      <div class="u-mapa-ruta-badge calculando" *ngIf="isCalculandoRuta">
+        ⟳ Calculando ruta por calles...
+      </div>
+    </div>
+
+    <!-- ─── INFO DE EMERGENCIA ─── -->
+    <div class="u-emergency-card">
+      <div class="u-ec-header">
+        <div class="u-ec-id">INC-#{{ emergenciaActual?.reporteId }}</div>
+        <div class="u-ec-estado" [style.background]="getEstadoColor()">{{ getEstadoLabel() }}</div>
+      </div>
+      <div class="u-ec-desc">{{ truncar(emergenciaActual?.descripcion, 120) }}</div>
+      <div class="u-ec-coords">
+        <span>📍 {{ emergenciaActual?.latitud | number:'1.4-4' }}, {{ emergenciaActual?.longitud | number:'1.4-4' }}</span>
+      </div>
+      <div *ngIf="emergenciaActual?.celular" class="u-ec-tel">📞 {{ emergenciaActual?.celular }}</div>
+    </div>
+
+    <!-- ─── ACCIONES ─── -->
+    <div class="u-actions">
+      <div *ngIf="finalizadoMensaje" class="u-finalizado-msg" [class.error]="finalizadoMensaje.startsWith('❌')">
+        {{ finalizadoMensaje }}
+      </div>
+
+      <button class="u-action-sitio"
+              *ngIf="unidadActual?.estado === 'EN_RUTA'"
+              (click)="marcarLlegada()">
+        📍 CONFIRMAR LLEGADA AL SITIO
+      </button>
+
+      <button class="u-action-finalizar"
+              [disabled]="isFinalizando"
+              (click)="abrirFinalizarModal()">
+        <span *ngIf="isFinalizando" class="u-btn-spinner">⟳</span>
+        <span *ngIf="!isFinalizando">✓ FINALIZAR Y DECLARAR DISPONIBLE</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ MODAL: OPERADOR ═══════════════ -->
+  <div class="u-modal-overlay" *ngIf="showOperadorModal">
+    <div class="u-modal">
+      <h3 class="u-modal-title">Identificación de Operador</h3>
+      <p class="u-modal-desc">Por favor, ingrese el nombre del operador encargado de la unidad <strong>{{ unidadASeleccionar?.nombre }}</strong>.</p>
+      
+      <input type="text" class="u-modal-input" placeholder="Ej. Juan Pérez" [(ngModel)]="formOperador">
+      
+      <div class="u-modal-actions">
+        <button class="u-btn-cancel" (click)="cancelarSeleccionOperador()">Cancelar</button>
+        <button class="u-btn-confirm" (click)="confirmarSeleccionOperador()">Registrar Operador</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ MODAL: FINALIZAR EMERGENCIA ═══════════════ -->
+  <div class="u-modal-overlay" *ngIf="showFinalizarModal">
+    <div class="u-modal">
+      <h3 class="u-modal-title">Finalizar y Reportar Novedades</h3>
+      <p class="u-modal-desc">Registre los datos de cierre de la emergencia asignada a la unidad.</p>
+      
+      <label class="u-modal-label">Personal Involucrado (Todos los integrantes):</label>
+      <input type="text" class="u-modal-input" placeholder="Ej. María Gómez, Pedro López" [(ngModel)]="formPersonal">
+      
+      <label class="u-modal-label" style="margin-top: 15px;">Novedades del Servicio:</label>
+      <textarea class="u-modal-textarea" rows="3" placeholder="Describa el resultado o cualquier novedad relevante..." [(ngModel)]="formNovedades"></textarea>
+      
+      <div class="u-modal-actions">
+        <button class="u-btn-cancel" (click)="cancelarFinalizarEmergencia()">Cancelar</button>
+        <button class="u-btn-confirm" (click)="confirmarFinalizarEmergencia()">Finalizar Emergencia</button>
+      </div>
+    </div>
+  </div>
+
+</div>

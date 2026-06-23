@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --red:#dc2626;--red2:#ef4444;--red3:#fee2e2;
+  --bg:#fff;--bg2:#f8fafc;--bg3:#f1f5f9;
+  --border:#e2e8f0;--border2:#cbd5e1;
+  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
+  --green:#16a34a;--greenbg:#dcfce7;--greenbd:#bbf7d0;
+}
+body{background:#f0f0f0;display:flex;justify-content:center;align-items:flex-start;padding:20px;min-height:100vh;font-family:'Barlow',sans-serif}
+
+/* Phone frame */
+.phone{
+  width:375px;
+  background:var(--bg);
+  border-radius:40px;
+  overflow:hidden;
+  box-shadow:0 0 0 10px #1a1a1a,0 20px 60px rgba(0,0,0,0.4);
+  position:relative;
+}
+.phone-notch{
+  height:34px;background:#000;
+  display:flex;align-items:center;justify-content:center;
+}
+.notch-cam{width:12px;height:12px;background:#111;border-radius:50%;border:2px solid #222}
+.phone-inner{overflow-y:auto;max-height:680px;background:var(--bg)}
+.phone-inner::-webkit-scrollbar{display:none}
+
+/* App header */
+.app-header{
+  background:var(--red);
+  padding:14px 20px 16px;
+  color:#fff;
+}
+.app-logo{
+  display:flex;align-items:center;gap:8px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;font-size:16px;letter-spacing:0.5px;
+  margin-bottom:4px;
+}
+.app-sub{font-size:12px;opacity:0.8}
+
+/* Steps progress */
+.steps-bar{
+  display:flex;background:var(--bg3);
+  border-bottom:1px solid var(--border);
+}
+.step-item{
+  flex:1;padding:8px 4px;text-align:center;
+  font-size:10px;font-weight:600;
+  color:var(--text3);cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all 0.2s;
+}
+.step-item.active{color:var(--red);border-bottom-color:var(--red)}
+.step-item.done{color:var(--green)}
+.step-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border-radius:50%;
+  background:var(--bg3);border:1.5px solid currentColor;
+  font-size:8px;font-weight:700;margin-bottom:2px;
+}
+.step-item.done .step-num{background:var(--green);border-color:var(--green);color:#fff}
+.step-item.active .step-num{background:var(--red);border-color:var(--red);color:#fff}
+
+/* Screens */
+.screen{padding:20px;display:none}
+.screen.active{display:block}
+
+/* Emergency type picker */
+.section-label{
+  font-size:11px;font-weight:600;letter-spacing:1px;
+  color:var(--text3);text-transform:uppercase;
+  margin-bottom:8px;
+}
+.type-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.type-btn{
+  aspect-ratio:1;
+  border:1.5px solid var(--border);
+  border-radius:12px;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;
+  cursor:pointer;background:var(--bg2);
+  font-size:10px;color:var(--text2);font-weight:600;
+  transition:all 0.2s;
+  text-align:center;
+}
+.type-btn.selected{border-color:var(--red);background:var(--red3);color:var(--red)}
+.type-btn:hover{border-color:var(--border2);background:var(--bg3)}
+.type-emoji{font-size:22px;margin-bottom:2px}
+
+/* Textarea */
+.desc-input{
+  width:100%;border:1.5px solid var(--border);
+  border-radius:10px;padding:12px 14px;
+  font-family:'Barlow',sans-serif;font-size:13px;
+  color:var(--text);background:var(--bg2);
+  resize:none;outline:none;line-height:1.5;
+}
+.desc-input:focus{border-color:var(--red);background:var(--bg)}
+.char-count{font-size:10px;color:var(--text3);text-align:right;margin-top:4px}
+
+/* GPS */
+.gps-card{
+  background:var(--bg2);border:1.5px solid var(--border);
+  border-radius:10px;padding:12px 14px;
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:14px;
+}
+.gps-icon{font-size:20px}
+.gps-data{flex:1}
+.gps-label{font-size:10px;color:var(--text3);margin-bottom:3px}
+.gps-coords{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:#2563eb;font-weight:600;
+}
+.gps-acc{font-size:9px;color:var(--text3);margin-top:1px}
+.gps-status{
+  display:flex;align-items:center;gap:4px;
+  font-size:10px;color:var(--green);font-weight:600;
+}
+.dot-green{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse-g 1.5s infinite}
+@keyframes pulse-g{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* Camera button */
+.camera-area{
+  border:2px dashed var(--border2);
+  border-radius:14px;
+  padding:24px 16px;
+  text-align:center;
+  cursor:pointer;
+  background:var(--bg2);
+  transition:all 0.2s;
+  margin-bottom:12px;
+}
+.camera-area:hover{border-color:var(--red);background:var(--red3)}
+.camera-area:active{transform:scale(0.98)}
+.cam-icon{font-size:40px;margin-bottom:8px}
+.cam-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;color:var(--text)}
+.cam-sub{font-size:11px;color:var(--text2);margin-top:3px}
+
+.or-divider{
+  text-align:center;font-size:11px;color:var(--text3);
+  margin:10px 0;display:flex;align-items:center;gap:8px;
+}
+.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.media-preview{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+  margin-bottom:14px;
+}
+.media-thumb-sm{
+  aspect-ratio:1;border-radius:8px;overflow:hidden;
+  border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;background:var(--bg2);
+  position:relative;cursor:pointer;
+}
+.remove-chip{
+  position:absolute;top:2px;right:2px;
+  width:16px;height:16px;background:rgba(0,0,0,0.5);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:#fff;
+}
+
+/* Confirm screen */
+.confirm-row{
+  display:flex;justify-content:space-between;
+  padding:8px 0;border-bottom:1px solid var(--border);
+  font-size:12px;
+}
+.confirm-row:last-child{border:none}
+.confirm-label{color:var(--text3);font-weight:500}
+.confirm-val{color:var(--text);text-align:right;max-width:60%}
+.confirm-val.mono{font-family:'JetBrains Mono',monospace;font-size:10px;color:#2563eb}
+.confirm-val.danger{color:var(--red);font-weight:600}
+
+.submit-warning{
+  background:#fef3c7;border:1px solid #fde68a;
+  border-radius:8px;padding:10px 12px;
+  font-size:11px;color:#92400e;margin-bottom:14px;
+  display:flex;gap:8px;
+}
+.submit-warning-icon{font-size:14px;flex-shrink:0}
+
+/* Buttons */
+.btn-primary{
+  width:100%;padding:14px;
+  background:var(--red);color:#fff;border:none;
+  border-radius:12px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;font-size:16px;letter-spacing:0.5px;
+  cursor:pointer;transition:all 0.2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-primary:hover{background:var(--red2)}
+.btn-primary:active{transform:scale(0.98)}
+.btn-secondary{
+  width:100%;padding:11px;
+  background:var(--bg3);color:var(--text2);border:1.5px solid var(--border);
+  border-radius:10px;
+  font-family:'Barlow',sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;transition:all 0.2s;margin-top:8px;
+}
+.btn-secondary:hover{background:var(--bg2);border-color:var(--border2)}
+
+/* Success screen */
+.success-icon{
+  text-align:center;padding:24px 0 16px;
+  font-size:52px;
+}
+.success-title{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;font-size:22px;text-align:center;
+  color:var(--green);letter-spacing:0.5px;margin-bottom:6px;
+}
+.success-sub{font-size:12px;color:var(--text2);text-align:center;line-height:1.5;margin-bottom:20px}
+.ticket-card{
+  background:var(--greenbg);border:1.5px solid var(--greenbd);
+  border-radius:10px;padding:12px 14px;margin-bottom:16px;
+}
+.ticket-id{
+  font-family:'JetBrains Mono',monospace;
+  font-size:16px;font-weight:600;color:var(--green);
+  text-align:center;margin-bottom:4px;
+}
+.ticket-sub{font-size:10px;color:#166534;text-align:center}
+.status-row{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:8px;padding:8px 10px;margin-bottom:6px;
+  font-size:11px;
+}
+.status-step{flex:1;color:var(--text2)}
+.status-done{color:var(--green);font-weight:600;font-size:10px}
+.status-proc{color:var(--red);font-weight:600;font-size:10px;animation:pulse-r 1s infinite}
+@keyframes pulse-r{0%,100%{opacity:1}50%{opacity:0.4}}
+
+.phone-bottom{height:34px;background:#f0f0f0;border-top:1px solid #ddd;display:flex;align-items:center;justify-content:center}
+.home-indicator{width:120px;height:5px;background:#aaa;border-radius:10px}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="phone-notch"><div class="notch-cam"></div></div>
+
+  <div class="phone-inner">
+    <!-- Header -->
+    <div class="app-header">
+      <div class="app-logo">🚒 Bomberos SD · Reportar</div>
+      <div class="app-sub">Cuerpo de Bomberos Santo Domingo</div>
+    </div>
+
+    <!-- Steps -->
+    <div class="steps-bar" id="steps-bar">
+      <div class="step-item active" id="step1-tab">
+        <div class="step-num">1</div><br>Tipo
+      </div>
+      <div class="step-item" id="step2-tab">
+        <div class="step-num">2</div><br>Evidencia
+      </div>
+      <div class="step-item" id="step3-tab">
+        <div class="step-num">3</div><br>Detalles
+      </div>
+      <div class="step-item" id="step4-tab">
+        <div class="step-num">4</div><br>Enviar
+      </div>
+    </div>
+
+    <!-- SCREEN 1: Tipo de emergencia -->
+    <div class="screen active" id="screen1">
+      <div class="section-label">Tipo de emergencia</div>
+      <div class="type-grid">
+        <div class="type-btn selected" onclick="selectType(this)">
+          <div class="type-emoji">🔥</div>Incendio
+        </div>
+        <div class="type-btn" onclick="selectType(this)">
+          <div class="type-emoji">🚗</div>Accidente
+        </div>
+        <div class="type-btn" onclick="selectType(this)">
+          <div class="type-emoji">⚠️</div>Gas / Quím.
+        </div>
+        <div class="type-btn" onclick="selectType(this)">
+          <div class="type-emoji">🏗</div>Derrumbe
+        </div>
+        <div class="type-btn" onclick="selectType(this)">
+          <div class="type-emoji">💧</div>Inundación
+        </div>
+        <div class="type-btn" onclick="selectType(this)">
+          <div class="type-emoji">🆘</div>Otro
+        </div>
+      </div>
+
+      <div class="section-label">Descripción breve</div>
+      <textarea class="desc-input" rows="3" maxlength="300"
+        placeholder="Describe brevemente lo que está ocurriendo..."
+        oninput="document.getElementById('char-count').textContent=(300-this.value.length)+' restantes'">Incendio en tercer piso de edificio residencial, hay personas atrapadas.</textarea>
+      <div class="char-count" id="char-count">229 restantes</div>
+
+      <div style="margin-top:14px">
+        <div class="section-label">Ubicación GPS</div>
+        <div class="gps-card">
+          <div class="gps-icon">📍</div>
+          <div class="gps-data">
+            <div class="gps-label">Tu ubicación actual</div>
+            <div class="gps-coords">-0.252134 · -79.175822</div>
+            <div class="gps-acc">Precisión: ±4 metros</div>
+          </div>
+          <div class="gps-status">
+            <div class="dot-green"></div>GPS OK
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="goTo(2)">Siguiente → Evidencia</button>
+    </div>
+
+    <!-- SCREEN 2: Evidencia multimedia -->
+    <div class="screen" id="screen2">
+      <div class="section-label">Evidencia fotográfica / video</div>
+
+      <div class="camera-area" onclick="addMedia()">
+        <div class="cam-icon">📷</div>
+        <div class="cam-title">TOMAR FOTO O VIDEO</div>
+        <div class="cam-sub">Captura la emergencia desde tu cámara</div>
+        <div style="font-size:9px;color:var(--text3);margin-top:6px">
+          Acepta: JPG, PNG, MP4 · Máx. 50 MB
+        </div>
+      </div>
+
+      <div class="or-divider">o sube desde galería</div>
+
+      <div class="media-preview" id="media-preview">
+        <div class="media-thumb-sm">🔥<div class="remove-chip">×</div></div>
+        <div class="media-thumb-sm" style="font-size:14px;color:var(--text3);border-style:dashed" onclick="addMedia()">+</div>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:10px;color:var(--text3);line-height:1.6">
+        🤖 Las imágenes serán analizadas automáticamente por IA para detectar el tipo de emergencia y su severidad.
+        <br>📂 Los archivos se almacenarán de forma asíncrona en el servidor.
+      </div>
+
+      <button class="btn-primary" onclick="goTo(3)">Siguiente → Detalles</button>
+      <button class="btn-secondary" onclick="goTo(1)">← Anterior</button>
+    </div>
+
+    <!-- SCREEN 3: Detalles contacto -->
+    <div class="screen" id="screen3">
+      <div class="section-label">Tus datos de contacto</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:600">Nombre completo</div>
+          <input type="text" value="Carlos Mendoza Vera"
+            style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;background:var(--bg2);color:var(--text)">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:600">Teléfono</div>
+          <input type="tel" value="+593 99 481 7234"
+            style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'JetBrains Mono',monospace;outline:none;background:var(--bg2);color:var(--text)">
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Dirección aproximada (completar si GPS no es preciso)</div>
+          <input type="text" placeholder="Ej: Av. Quito km 3, frente al parque..."
+            style="width:100%;border:none;background:transparent;font-size:12px;font-family:'Barlow',sans-serif;outline:none;color:var(--text)">
+        </div>
+      </div>
+
+      <div class="submit-warning">
+        <div class="submit-warning-icon">⚠️</div>
+        <div>Al enviar confirmas que esta es una emergencia real. Los reportes falsos pueden ser penalizados legalmente.</div>
+      </div>
+
+      <button class="btn-primary" onclick="goTo(4)">Revisar y enviar →</button>
+      <button class="btn-secondary" onclick="goTo(2)">← Anterior</button>
+    </div>
+
+    <!-- SCREEN 4: Confirm + Send -->
+    <div class="screen" id="screen4">
+      <div class="section-label">Confirmar reporte</div>
+
+      <div style="background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <div class="confirm-row"><span class="confirm-label">Tipo</span><span class="confirm-val danger">🔥 Incendio</span></div>
+        <div class="confirm-row"><span class="confirm-label">Ubicación GPS</span><span class="confirm-val mono">-0.252134, -79.175822</span></div>
+        <div class="confirm-row"><span class="confirm-label">Evidencias</span><span class="confirm-val">1 foto adjunta</span></div>
+        <div class="confirm-row"><span class="confirm-label">Reportado por</span><span class="confirm-val">Carlos M.</span></div>
+        <div class="confirm-row"><span class="confirm-label">Teléfono</span><span class="confirm-val mono">+593 99 481 7234</span></div>
+        <div class="confirm-row">
+          <span class="confirm-label">Descripción</span>
+          <span class="confirm-val" style="font-size:11px">Incendio en 3er piso, personas atrapadas.</span>
+        </div>
+      </div>
+
+      <div style="font-size:10px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:14px;line-height:1.6">
+        📡 Se enviará vía <strong style="color:var(--text)">multipart/form-data</strong> al servidor.
+        El WebSocket notificará a la central operativa en tiempo real.
+      </div>
+
+      <button class="btn-primary" onclick="sendReport()">
+        🚒 ENVIAR EMERGENCIA AHORA
+      </button>
+      <button class="btn-secondary" onclick="goTo(3)">← Editar datos</button>
+    </div>
+
+    <!-- SCREEN 5: Success -->
+    <div class="screen" id="screen5">
+      <div class="success-icon">✅</div>
+      <div class="success-title">¡REPORTE ENVIADO!</div>
+      <div class="success-sub">
+        Tu reporte fue recibido por la central operativa.<br>
+        Los bomberos han sido notificados.
+      </div>
+
+      <div class="ticket-card">
+        <div class="ticket-id">INC-20240531-0042</div>
+        <div class="ticket-sub">Guarda este número de seguimiento</div>
+      </div>
+
+      <div class="section-label" style="margin-bottom:8px">Estado en tiempo real</div>
+      <div class="status-row"><div class="status-step">📨 Reporte recibido</div><div class="status-done">✓ HECHO</div></div>
+      <div class="status-row"><div class="status-step">🤖 Análisis IA en progreso</div><div class="status-proc">● PROCESANDO</div></div>
+      <div class="status-row"><div class="status-step">📁 Guardando evidencia (async)</div><div class="status-proc">● PROCESANDO</div></div>
+      <div class="status-row"><div class="status-step">🚒 Despacho de unidades</div><div style="color:var(--text3);font-size:10px">PENDIENTE</div></div>
+
+      <button class="btn-primary" style="background:var(--green);margin-top:14px" onclick="goTo(1)">Nuevo reporte</button>
+    </div>
+
+  </div>
+  <div class="phone-bottom"><div class="home-indicator"></div></div>
+</div>
+
+<script>
+let currentScreen=1;
+function goTo(n){
+  for(let i=1;i<=5;i++){
+    document.getElementById('screen'+i).classList.toggle('active',i===n);
+  }
+  const tabs=['step1-tab','step2-tab','step3-tab','step4-tab'];
+  tabs.forEach((t,i)=>{
+    const el=document.getElementById(t);
+    if(!el)return;
+    el.classList.remove('active','done');
+    if(i+1===n)el.classList.add('active');
+    else if(i+1<n)el.classList.add('done');
+  });
+  currentScreen=n;
+  document.querySelector('.phone-inner').scrollTop=0;
+}
+function selectType(btn){
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+let mediaCount=1;
+function addMedia(){
+  if(mediaCount>=3)return;
+  const prev=document.getElementById('media-preview');
+  const plus=prev.querySelector('[onclick="addMedia()"]');
+  const newThumb=document.createElement('div');
+  newThumb.className='media-thumb-sm';
+  newThumb.innerHTML=['🌫','🚒'][mediaCount-1]+'<div class="remove-chip">×</div>';
+  prev.insertBefore(newThumb,plus);
+  mediaCount++;
+}
+function sendReport(){
+  goTo(5);
+}
+</script>
+
+</body>
+</html>

@@ -1,36 +1,242 @@
-<div class="dashboard-container">
-  <aside>
+<head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
 
-  </aside>
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C10.5 4.5 8 7 8 10a4 4 0 0 0 8 0c0-3-2.5-5.5-4-8z" fill="#ff4444" stroke="none"/>
+        <path d="M12 6c-.5 1.5-2 3-2 4.5a2 2 0 0 0 4 0C14 9 12.5 7.5 12 6z" fill="#ffaa44" stroke="none"/>
+        <path d="M5 20h14M7 20v-5h10v5" stroke="#ff6644" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      CENTRAL DE BOMBEROS
+      <span class="logo-badge">COMANDO</span>
+    </div>
+    <div class="topbar-status">
+      <span class="dot dot-green pulse"></span>WS LIVE
+    </div>
+    <div class="topbar-status">
+      <span class="dot dot-green"></span>DB OK
+    </div>
+    <div class="topbar-status" *ngIf="threadStats">
+      <span class="dot" [ngClass]="threadStats.activeCount > 0 ? 'dot-red pulse' : 'dot-green'"></span>
+      {{ threadStats.activeCount }} HILOS
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="clear-btn" (click)="abrirModalHistorial()" style="background: rgba(168, 85, 247, 0.12); border-color: rgba(168, 85, 247, 0.3); color: #c084fc;">
+      📚 Historial
+    </button>
+    <button class="clear-btn" (click)="abrirModalReportes()" style="background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.3); color: #60a5fa;">
+      📋 Reportes
+    </button>
+    <button class="clear-btn" (click)="abrirModalUnidades()" style="background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.3); color: #4ade80;">
+      🛠️ Unidades
+    </button>
+    <button class="clear-btn" (click)="limpiarTodosLosIncidentes()" style="border-color: rgba(245,158,11,0.3); color: #fbbf24; background: rgba(245,158,11,0.08);">
+      🧹 Nueva Guardia
+    </button>
+    <a class="unit-btn" routerLink="/unidad">
+      🚒 MÓDULO UNIDADES
+    </a>
+    <a class="sim-btn" routerLink="/reportar">
+      🚨 SIMULAR ALERTA
+    </a>
+    <div style="text-align:right; padding-left: 6px; border-left: 1px solid rgba(255,255,255,0.06);">
+      <div class="topbar-time">{{ clockTime }}</div>
+      <div class="topbar-date">Santo Domingo · ECU</div>
+    </div>
+    <!-- User Info + Logout -->
+    <ng-container *ngIf="currentUser$ | async as user">
+      <div class="user-chip">
+        <img [src]="$any(user).picture" [alt]="$any(user).name" class="user-avatar">
+        <span class="user-name">{{ $any(user).name?.split(' ')[0] }}</span>
+      </div>
+    </ng-container>
+    <button class="logout-btn" (click)="logout()" title="Cerrar sesión">
+      ⏻
+    </button>
+  </div>
+</div>
 
-  <main class="panel-central">
-    <header class="cabecera">
-      <h1>🧯 Comando Central Operativo</h1>
-    </header>
+<!-- MAIN CONTENT -->
+<div class="main">
+  <!-- CENTER MAP -->
+  <div class="map-area">
+    <div id="mapa-bomberos" class="map-canvas"></div>
+    <div class="map-overlay-text">📍 Santo Domingo · Mapa Táctico</div>
+    <!-- Legend -->
+    <div class="map-legend">
+      <div class="map-legend-title">🟥 Nivel de Riesgo</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff5757; box-shadow: 0 0 5px #ff5757"></div>Crítico</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fbbf24; box-shadow: 0 0 5px #fbbf24"></div>Alto</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#60a5fa; box-shadow: 0 0 5px #60a5fa"></div>Medio</div>
+    </div>
+  </div>
 
-    <div id="mapa-bomberos" class="mapa-contenedor"></div>
-  </main>
-
-  <aside class="panel-derecho">
-    <h2 class="titulo-alertas" > 🚨 Alertas en Vivo (Live)</h2>
-    
-    <div class="lista-reportes">
-      <div *ngFor="let rep of listaReportes" class="tarjeta-alerta clicable" [routerLink]="['/detalle', rep.id]">
-        <div class="tarjeta-header">
-          <span class="badge-fuego">🔥 INCIDENTE #{{ rep.id }}</span>
-          <span class="fecha">{{ rep.fechaReporte | date:'HH:mm:ss'}}</span>
+  <!-- ALERTS PANEL -->
+  <div class="alerts-panel">
+    <div class="alerts-header">
+      <div class="alerts-title">
+        <span style="font-size:15px;">&#128680;</span>
+        ALERTAS ACTIVAS
+        <span class="live-badge">VIVO</span>
+      </div>
+      <div class="alerts-count">{{ listaReportes.length }} activa(s)</div>
+    </div>
+    <div class="alerts-list">
+      <div *ngFor="let rep of listaReportes" 
+           class="alert-card" 
+           [ngClass]="[getSeverityClass(rep), isNewAlert(rep) ? 'new-alert' : '']" 
+           (click)="selectReport(rep)">
+        <div class="alert-top">
+          <div class="alert-type" [ngClass]="getSeverityClass(rep)">
+            {{ getSeverityIcon(rep) }} {{ getSeverityTitle(rep) }}
+          </div>
+          <div class="alert-time">{{ formatTime(rep.fechaReporte) }}</div>
         </div>
-
-        <p class="descripcion">{{ rep.descripcion }}</p>
-
-        <div class="tarjeta-footer">
-          <span> Lat: {{ rep.latitud }} | Lng: {{ rep.longitud }}</span>
+        <div class="alert-desc">{{ rep.descripcion }}</div>
+        <div class="alert-meta">
+          <span class="alert-tag tag-loc">📍 ID: #{{ rep.id }}</span>
+          <span class="alert-tag" [ngClass]="'tag-' + getSeverityClass(rep)">{{ getSeverityBadge(rep) }}</span>
         </div>
-
+        <div class="alert-actions">
+          <a class="view-detail-btn" [routerLink]="['/detalle', rep.id]" (click)="$event.stopPropagation()">
+            Ver Detalles del Incidente &rarr;
+          </a>
+        </div>
       </div>
     </div>
+  </div>
+</div>
 
+<!-- UNIT MANAGEMENT MODAL -->
+<div class="modal-overlay" *ngIf="showUnidadesModal" (click)="cerrarModalUnidades()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">🛠️ Gestión de Unidades</h2>
+      <button class="close-btn" (click)="cerrarModalUnidades()">×</button>
+    </div>
 
-  </aside>
+    <!-- Agregar Unidad -->
+    <div class="add-unit-form">
+      <input type="text" placeholder="Nombre (ej. B-05 Autobomba)" [(ngModel)]="nuevaUnidad.nombre">
+      <input type="text" placeholder="Tipo (ej. Rescate)" [(ngModel)]="nuevaUnidad.tipo">
+      <button (click)="agregarUnidad()">➕ Agregar</button>
+    </div>
 
+    <!-- Lista de Unidades -->
+    <div style="max-height: 400px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;">
+      <table class="units-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of listaUnidades">
+            <td>{{ u.nombre }}</td>
+            <td>{{ u.tipo }}</td>
+            <td>
+              <select [value]="u.estado" (change)="forzarEstado(u.id, $event)">
+                <option value="DISPONIBLE">Libre (DISPONIBLE)</option>
+                <option value="EN_RUTA">En camino (EN_RUTA)</option>
+                <option value="EN_SITIO">Atendiendo (EN_SITIO)</option>
+              </select>
+            </td>
+            <td>
+              <button class="delete-btn" (click)="eliminarUnidad(u.id)">🗑️ Eliminar</button>
+            </td>
+          </tr>
+          <tr *ngIf="listaUnidades.length === 0">
+            <td colspan="4" style="text-align: center; padding: 20px; color: #94a3b8;">
+              No hay unidades registradas.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- REPORTES FINALES MODAL -->
+<div class="modal-overlay" *ngIf="showReportesModal" (click)="cerrarModalReportes()">
+  <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 800px; width: 90%;">
+    <div class="modal-header">
+      <h2 class="modal-title">📋 Bitácora de Reportes Finales</h2>
+      <button class="close-btn" (click)="cerrarModalReportes()">×</button>
+    </div>
+
+    <!-- Lista de Reportes Finales -->
+    <div style="max-height: 500px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;">
+      <table class="units-table">
+        <thead>
+          <tr>
+            <th>Fecha/Hora</th>
+            <th>Unidad</th>
+            <th>Operador</th>
+            <th>Personal Involucrado</th>
+            <th>Novedades / Cierre</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let rep of listaReportesFinales" style="vertical-align: top;">
+            <td style="white-space: nowrap; font-size: 0.85em; color: #94a3b8;">{{ rep.fechaHora | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td style="font-weight: 500;">{{ rep.unidad?.nombre || 'Desconocida' }}</td>
+            <td>{{ rep.operador }}</td>
+            <td style="font-size: 0.9em; color: #e2e8f0;">{{ rep.personalInvolucrado }}</td>
+            <td style="font-size: 0.9em; color: #cbd5e1; max-width: 250px; word-wrap: break-word;">{{ rep.novedades }}</td>
+          </tr>
+          <tr *ngIf="listaReportesFinales.length === 0">
+            <td colspan="5" style="text-align: center; padding: 30px; color: #94a3b8;">
+              No hay reportes finales registrados en la base de datos.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORIAL DE INCIDENTES MODAL -->
+<div class="modal-overlay" *ngIf="showHistorialModal" (click)="cerrarModalHistorial()">
+  <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 800px; width: 90%;">
+    <div class="modal-header">
+      <h2 class="modal-title">📚 Historial Completo de Incidentes Ciudadanos</h2>
+      <button class="close-btn" (click)="cerrarModalHistorial()">×</button>
+    </div>
+
+    <div style="max-height: 500px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;">
+      <table class="units-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Ubicación</th>
+            <th>Descripción del Ciudadano</th>
+            <th>Contacto</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let rep of listaHistorialCompleto" style="vertical-align: top;">
+            <td style="font-weight: 500; color: #94a3b8;">#{{ rep.id }}</td>
+            <td style="font-size: 0.85em; color: #e2e8f0;">{{ rep.latitud | number:'1.4-4' }},<br>{{ rep.longitud | number:'1.4-4' }}</td>
+            <td style="font-size: 0.9em; color: #cbd5e1; max-width: 300px; word-wrap: break-word;">{{ rep.descripcion }}</td>
+            <td style="font-size: 0.85em; color: #a78bfa;">{{ rep.celular || 'N/A' }}</td>
+          </tr>
+          <tr *ngIf="listaHistorialCompleto.length === 0">
+            <td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">
+              No hay incidentes reportados en la base de datos.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>

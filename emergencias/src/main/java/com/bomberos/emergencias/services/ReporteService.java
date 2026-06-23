@@ -1,13 +1,15 @@
 package com.bomberos.emergencias.services;
 import com.bomberos.emergencias.models.EvidenciaMultimedia;
 import com.bomberos.emergencias.models.ReporteCiudadano;
+import com.bomberos.emergencias.models.EvidenciaDto;
 import com.bomberos.emergencias.repositories.EvidenciaMultimediaRepository;
 import com.bomberos.emergencias.repositories.ReporteCiudadanoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.simp.SimpMessagingTemplate; // <-- ¡ESTO ARREGLA EL SUBRAYADO ROJO!
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class ReporteService {
 
@@ -31,6 +34,7 @@ public class ReporteService {
 
     private final String CARPETA_UPLOADS = "uploads/";
 
+    @Transactional
     public ReporteCiudadano registrarYNotificar(ReporteCiudadano reporte) {
         // 1. Guardamos de forma segura en Postgres
         ReporteCiudadano guardado = reporteRepository.save(reporte);
@@ -44,7 +48,7 @@ public class ReporteService {
         payload.put("celularReportero", guardado.getCelularReportero() != null ? guardado.getCelularReportero() : "");
         payload.put("fechaReporte", guardado.getFechaReporte().toString());
 
-        System.out.println("--- TRANSMITIENDO EVOLUCIÓN WEBSOCKET: " + payload + " ---");
+        log.info("--- TRANSMITIENDO EVOLUCIÓN WEBSOCKET: {} ---", payload);
 
         // CAMBIO AQUÍ: Enviamos el payload DIRECTO, sin el Optional.of()
         // Le hacemos un cast a (Object) para que IntelliJ sepa exactamente qué método usar
@@ -55,31 +59,32 @@ public class ReporteService {
 
 
     @Async
-    public void guardarEvidenciasMultimediaAsincrono(ReporteCiudadano reporte, MultipartFile[] archivos) {
-        if (archivos == null || archivos.length == 0) return;
+    public void guardarEvidenciasMultimediaAsincrono(ReporteCiudadano reporte, List<EvidenciaDto> archivos) {
+        if (archivos == null || archivos.isEmpty()) return;
 
         try {
             Files.createDirectories(Paths.get(CARPETA_UPLOADS));
         } catch (IOException e) {
-            System.err.println("Error creando carpeta: " + e.getMessage());
+            log.error("Error creando carpeta: {}", e.getMessage());
         }
 
-        for (MultipartFile archivo : archivos) {
-            if (archivo.isEmpty()) continue;
+        for (EvidenciaDto archivo : archivos) {
             try {
-                String nombreUnico = UUID.randomUUID().toString() + "_" + archivo.getOriginalFilename();
+                String nombreUnico = UUID.randomUUID().toString() + "_" + archivo.filename();
                 Path rutaCompleta = Paths.get(CARPETA_UPLOADS + nombreUnico);
-                Files.copy(archivo.getInputStream(), rutaCompleta);
+                
+                // Escribir los bytes directamente en el archivo
+                Files.write(rutaCompleta, archivo.bytes());
 
                 EvidenciaMultimedia evidencia = new EvidenciaMultimedia();
                 evidencia.setReporteCiudadano(reporte);
                 evidencia.setUrlArchivo(rutaCompleta.toString());
-                evidencia.setTipoArchivo(archivo.getContentType() != null && archivo.getContentType().contains("video") ? "VIDEO" : "FOTO");
+                evidencia.setTipoArchivo(archivo.contentType() != null && archivo.contentType().contains("video") ? "VIDEO" : "FOTO");
 
                 evidenciaRepository.save(evidencia);
-                System.out.println("--- HILO SECUNDARIO: Archivo guardado con éxito: " + nombreUnico + " ---");
+                log.info("--- HILO SECUNDARIO (Async): Archivo guardado con éxito: {} ---", nombreUnico);
             } catch (IOException e) {
-                System.err.println("Error en segundo plano: " + e.getMessage());
+                log.error("Error en segundo plano: {}", e.getMessage());
             }
         }
     }
@@ -93,6 +98,10 @@ public class ReporteService {
 
     public Optional<ReporteCiudadano> obtenerReportePorId(Long id) {
         return reporteRepository.findById(id);
+    }
+
+    public List<EvidenciaMultimedia> obtenerEvidenciasPorReporteId(Long id) {
+        return evidenciaRepository.findByReporteCiudadanoId(id);
     }
 
 }
