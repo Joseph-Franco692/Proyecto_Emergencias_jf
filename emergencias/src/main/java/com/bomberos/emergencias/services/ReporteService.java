@@ -40,19 +40,22 @@ public class ReporteService {
         ReporteCiudadano guardado = reporteRepository.save(reporte);
 
         // 2. CONSTRUIMOS UN PAYLOAD MAP LIMPIO
-        java.util.Map<String, Object> payload = new java.util.HashMap<>();
-        payload.put("id", guardado.getId());
-        payload.put("descripcion", guardado.getDescripcion());
-        payload.put("latitud", guardado.getLatitud());
-        payload.put("longitud", guardado.getLongitud());
-        payload.put("celularReportero", guardado.getCelularReportero() != null ? guardado.getCelularReportero() : "");
-        payload.put("fechaReporte", guardado.getFechaReporte().toString());
+        String jsonPayload = "{" +
+                "\"id\":" + guardado.getId() + "," +
+                "\"descripcion\":\"" + guardado.getDescripcion().replace("\"", "\\\"") + "\"," +
+                "\"latitud\":\"" + guardado.getLatitud().toString() + "\"," +
+                "\"longitud\":\"" + guardado.getLongitud().toString() + "\"," +
+                "\"celularReportero\":\"" + (guardado.getCelularReportero() != null ? guardado.getCelularReportero() : "") + "\"," +
+                "\"iaLabel\":\"" + (guardado.getIaLabel() != null ? guardado.getIaLabel() : "") + "\"," +
+                "\"iaConfidence\":\"" + (guardado.getIaConfidence() != null ? guardado.getIaConfidence().toString() : "") + "\"," +
+                "\"fechaReporte\":\"" + guardado.getFechaReporte().toString() + "\"" +
+                "}";
 
-        log.info("--- TRANSMITIENDO EVOLUCIÓN WEBSOCKET: {} ---", payload);
+        log.info("--- TRANSMITIENDO EVOLUCIÓN WEBSOCKET: {} ---", jsonPayload);
 
         // CAMBIO AQUÍ: Enviamos el payload DIRECTO, sin el Optional.of()
         // Le hacemos un cast a (Object) para que IntelliJ sepa exactamente qué método usar
-        messagingTemplate.convertAndSend("/topic/nuevos-reportes", (Object) payload);
+        messagingTemplate.convertAndSend("/topic/nuevos-reportes", (Object) jsonPayload);
 
         return guardado;
     }

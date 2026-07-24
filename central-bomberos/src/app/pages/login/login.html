@@ -1,6 +1,5 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <div class="login-bg">
-  <!-- Animated background particles -->
   <div class="particles">
     <div class="particle p1"></div>
     <div class="particle p2"></div>
@@ -10,7 +9,7 @@
   </div>
 
   <div class="login-card">
-    <!-- Header Brand -->
+    <!-- Brand -->
     <div class="login-brand">
       <div class="brand-icon">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
@@ -23,35 +22,110 @@
         <div class="brand-sub">Santo Domingo · Ecuador</div>
       </div>
     </div>
-
     <div class="login-divider"></div>
-
     <div class="login-title">
       <h1>Acceso al Sistema</h1>
-      <p>Identifícate con tu cuenta institucional de Google para ingresar al sistema de comando.</p>
+      <p>Identifícate para ingresar al sistema de comando.</p>
     </div>
 
-    <!-- Google Button -->
-    <div class="google-btn-wrapper">
-      <div id="google-btn-container"></div>
+    <!-- Tabs -->
+    <div class="login-tabs">
+      <button class="tab-btn" [class.tab-active]="screen === 'google'" (click)="goTo('google')">Google</button>
+      <button class="tab-btn" [class.tab-active]="isManualTab()" (click)="goTo('manual')">Manual / Operador</button>
     </div>
 
-    <!-- Loading State -->
+    <!-- ══ GOOGLE ══ -->
+    <div [hidden]="screen !== 'google'" style="text-align:center; min-height:50px;">
+      <div id="google-btn-container" style="display:inline-block;"></div>
+    </div>
+
+    <!-- ══ LOGIN MANUAL ══ -->
+    <ng-container *ngIf="screen === 'manual'">
+      <div class="form-group">
+        <input type="email" [(ngModel)]="email" placeholder="Correo electrónico" class="inp" (keyup.enter)="doLogin()">
+        <input type="password" [(ngModel)]="password" placeholder="Contraseña" class="inp" (keyup.enter)="doLogin()">
+        <button class="btn-primary" [disabled]="isLoading" (click)="doLogin()">
+          {{ isLoading ? 'Verificando...' : 'Iniciar Sesión' }}
+        </button>
+        <div class="form-links">
+          <a (click)="goTo('register')">Crear cuenta</a>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ══ REGISTRO ══ -->
+    <ng-container *ngIf="screen === 'register'">
+      <p class="screen-title">Crear cuenta de Operador</p>
+      <div class="form-group">
+        <input type="text"     [(ngModel)]="name"     placeholder="Nombre completo"   class="inp">
+        <input type="email"    [(ngModel)]="email"    placeholder="Correo electrónico" class="inp">
+        <input type="password" [(ngModel)]="password" placeholder="Contraseña"         class="inp" (keyup.enter)="doRegister()">
+        <button class="btn-primary" [disabled]="isLoading" (click)="doRegister()">
+          {{ isLoading ? 'Enviando código...' : 'Registrarse' }}
+        </button>
+        <button class="btn-ghost" (click)="goTo('manual')">← Volver al Login</button>
+      </div>
+    </ng-container>
+
+    <!-- ══ VERIFICAR CORREO ══ -->
+    <ng-container *ngIf="screen === 'verify'">
+      <p class="screen-title">Verifica tu cuenta</p>
+      <p class="screen-sub">Ingresa el código de 6 dígitos enviado a <strong>{{ email }}</strong></p>
+      <div class="form-group">
+        <input type="email" [(ngModel)]="email" placeholder="Tu correo electrónico" class="inp" style="font-size:0.9rem;">
+        <input type="text" [(ngModel)]="code" maxlength="6" placeholder="000000" class="inp inp-code" (keyup.enter)="doVerifyAccount()">
+        <button class="btn-primary" [disabled]="isLoading" (click)="doVerifyAccount()">
+          {{ isLoading ? 'Verificando...' : 'Activar Cuenta' }}
+        </button>
+        <div class="form-links">
+          <a (click)="doResendCode()">Reenviar código</a>
+          <a (click)="goTo('manual')">Ya tengo cuenta</a>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ══ SETUP 2FA (QR) ══ -->
+    <ng-container *ngIf="screen === 'setup2FA'">
+      <p class="screen-title">Configura Google Authenticator</p>
+      <p class="screen-sub">Escanea el código QR con la app en tu celular.</p>
+      <div class="form-group" style="align-items:center;">
+        <img *ngIf="qrUrl" [src]="qrUrl" alt="QR Code" style="width:160px;height:160px;background:#fff;padding:4px;border-radius:8px;border:2px solid #fff;">
+        <p style="color:#888;font-size:0.8rem;text-align:center;">Clave manual:<br><strong style="color:#ffaa44;">{{ qrKey }}</strong></p>
+        <input type="text" [(ngModel)]="code" maxlength="6" placeholder="000000" class="inp inp-code" (keyup.enter)="doConfirmMFA()">
+        <button class="btn-primary" [disabled]="isLoading" (click)="doConfirmMFA()">
+          {{ isLoading ? 'Verificando...' : 'Confirmar e Ingresar' }}
+        </button>
+        <button class="btn-ghost" (click)="goTo('manual')">Cancelar</button>
+      </div>
+    </ng-container>
+
+    <!-- ══ VERIFICAR 2FA (LOGIN) ══ -->
+    <ng-container *ngIf="screen === 'verify2FA'">
+      <p class="screen-title">Verificación en 2 pasos</p>
+      <p class="screen-sub">Ingresa el código de 6 dígitos de Google Authenticator.</p>
+      <div class="form-group">
+        <input type="text" [(ngModel)]="code" maxlength="6" placeholder="000000" class="inp inp-code" (keyup.enter)="doVerify2FA()">
+        <button class="btn-primary" [disabled]="isLoading" (click)="doVerify2FA()">
+          {{ isLoading ? 'Verificando...' : 'Ingresar' }}
+        </button>
+        <button class="btn-ghost" (click)="goTo('manual')">← Volver</button>
+      </div>
+    </ng-container>
+
+    <!-- Loading -->
     <div class="login-loading" *ngIf="isLoading">
       <div class="loader-ring"></div>
-      <span>Verificando identidad...</span>
+      <span>Un momento...</span>
     </div>
+
+    <!-- Éxito -->
+    <div class="alert-success" *ngIf="success && !isLoading">✅ {{ success }}</div>
 
     <!-- Error -->
-    <div class="login-error" *ngIf="error">
-      <span>⚠️ {{ error }}</span>
-    </div>
+    <div class="login-error" *ngIf="error && !isLoading">⚠️ {{ error }}</div>
 
-    <div class="login-footer">
-      <span>🔒 Acceso restringido al personal autorizado del Cuerpo de Bomberos</span>
-    </div>
+    <div class="login-footer">🔒 Acceso restringido al personal autorizado</div>
   </div>
 </div>
 
-<!-- Google Identity Services Script -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>

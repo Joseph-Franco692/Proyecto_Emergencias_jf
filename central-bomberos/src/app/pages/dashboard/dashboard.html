@@ -103,6 +103,9 @@
         <div class="alert-meta">
           <span class="alert-tag tag-loc">📍 ID: #{{ rep.id }}</span>
           <span class="alert-tag" [ngClass]="'tag-' + getSeverityClass(rep)">{{ getSeverityBadge(rep) }}</span>
+          <span *ngIf="rep.iaLabel" class="alert-tag" style="background: rgba(168, 85, 247, 0.15); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.4);">
+            🤖 {{ rep.iaConfidence | number:'1.0-0' }}% IA
+          </span>
         </div>
         <div class="alert-actions">
           <a class="view-detail-btn" [routerLink]="['/detalle', rep.id]" (click)="$event.stopPropagation()">

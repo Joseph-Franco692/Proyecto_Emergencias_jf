@@ -2,19 +2,21 @@ package com.bomberos.emergencias.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executor;
 
 @Configuration
+@EnableAsync
 public class AsyncConfig {
 
-    @Bean(name = "taskExecutor") // <-- Definimos explícitamente el nombre que Spring está pidiendo
+    @Bean(name = "taskExecutor")
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(4);       // Hilos mínimos activos de forma permanente
-        executor.setMaxPoolSize(8);        // Hilos máximos si el servidor se satura de fotos
-        executor.setQueueCapacity(500);    // Cuántas imágenes puede dejar en cola de espera
-        executor.setThreadNamePrefix("BomberosAsync-"); // Prefijo para identificar el hilo en consola
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(500);
+        executor.setThreadNamePrefix("BomberosAsync-");
         executor.initialize();
         return executor;
     }

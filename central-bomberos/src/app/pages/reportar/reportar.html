@@ -176,12 +176,16 @@
           <div class="form-group">
             <label class="form-label">Teléfono / Celular</label>
             <input 
-              type="tel" 
+              type="text" 
               class="form-input"
               [(ngModel)]="telefono"
-              maxlength="15"
-              placeholder="+593 99 123 4567"
+              maxlength="10"
+              (input)="soloNumeros($event)"
+              placeholder="Ej: 0991234567"
             >
+            <div *ngIf="telefono && telefono.length > 0 && telefono.length < 10" class="form-hint" style="color: #ea4335; margin-top: 6px;">
+              El celular debe tener 10 dígitos numéricos.
+            </div>
           </div>
 
           <div class="form-group">

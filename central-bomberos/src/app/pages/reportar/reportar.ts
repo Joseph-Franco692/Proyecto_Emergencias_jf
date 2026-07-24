@@ -159,11 +159,24 @@ export class ReportarComponent implements OnInit {
     this.tipoSeleccionado = tipo;
   }
 
+  public soloNumeros(event: any): void {
+    const input = event.target.value;
+    // Remueve todo lo que no sea número
+    this.telefono = input.replace(/[^0-9]/g, '');
+  }
+
   public goTo(screen: number): void {
     // Si intentamos avanzar al paso 2 sin tener GPS validado, bloqueamos al usuario
     if (screen === 2 && this.gpsStatus !== 'GPS OK') {
       alert('Para garantizar una respuesta de emergencia coordinada, es obligatorio otorgar permisos de GPS en tu navegador para detectar la ubicación del dispositivo.');
       return;
+    }
+    // Validación de celular antes de ir al paso 4
+    if (screen === 4) {
+      if (!this.telefono || this.telefono.length < 10) {
+        alert('Por favor, ingresa un número de celular válido de 10 dígitos.');
+        return;
+      }
     }
     this.currentScreen = screen;
   }

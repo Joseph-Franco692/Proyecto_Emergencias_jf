@@ -6,8 +6,11 @@ import com.bomberos.emergencias.models.EvidenciaDto;
 import com.bomberos.emergencias.services.ReporteService;
 import com.bomberos.emergencias.services.UnidadBomberilService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -47,6 +50,37 @@ public class ReporteController {
         nuevoReporte.setLatitud(new BigDecimal(latitud));
         nuevoReporte.setLongitud(new BigDecimal(longitud));
         nuevoReporte.setCelularReportero(celularReportero);
+
+        // --- LLAMADA AL MICROSERVICIO DE IA (PYTHON) ---
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("text", descripcion);
+            if (fotos != null && fotos.length > 0 && !fotos[0].isEmpty()) {
+                body.add("image", fotos[0].getResource());
+            }
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+            ResponseEntity<Map> response = restTemplate.postForEntity("http://localhost:8000/predict", requestEntity, Map.class);
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Map<String, Object> resBody = response.getBody();
+                nuevoReporte.setIaLabel((String) resBody.get("label"));
+                
+                Object confObj = resBody.get("percentage");
+                if (confObj instanceof Number) {
+                    nuevoReporte.setIaConfidence(new BigDecimal(((Number) confObj).doubleValue()));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error llamando a la IA: " + e.getMessage());
+            nuevoReporte.setIaLabel("Sin Análisis (Error IA)");
+            nuevoReporte.setIaConfidence(BigDecimal.ZERO);
+        }
+        // ----------------------------------------------
 
         // 1. Guardamos en la base de datos
         ReporteCiudadano reporteGuardado = reporteService.registrarYNotificar(nuevoReporte);
@@ -99,7 +133,16 @@ public class ReporteController {
     @PutMapping("/{id}/despachar")
     public ResponseEntity<Map<String, Object>> despacharUnidades(
             @PathVariable Long id,
-            @RequestBody List<Long> unidadIds) {
+            @RequestBody List<Long> unidadIds,
+            jakarta.servlet.http.HttpServletRequest req) {
+        
+        String role = (String) req.getAttribute("userRole");
+        if (!"CENTRAL".equals(role)) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Acceso denegado: Solo el rol CENTRAL puede despachar unidades.");
+            return ResponseEntity.status(403).body(error);
+        }
+
         try {
             Map<String, Object> resultado = unidadService.despacharUnidades(id, unidadIds);
             return ResponseEntity.ok(resultado);

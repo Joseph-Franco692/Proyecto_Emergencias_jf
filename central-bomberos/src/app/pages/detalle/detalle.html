@@ -76,6 +76,10 @@
             <div class="meta-label">Fecha y hora de Registro (ECU)</div>
             <div class="meta-value mono">{{ formatDateTime(reporteSeleccionado.fechaReporte) }}</div>
           </div>
+          <div class="meta-card" *ngIf="reporteSeleccionado.iaLabel" style="background: rgba(168, 85, 247, 0.05); border-color: rgba(168, 85, 247, 0.3);">
+            <div class="meta-label" style="color: #c084fc;">Análisis de Inteligencia Artificial</div>
+            <div class="meta-value">🤖 {{ reporteSeleccionado.iaLabel }} <span style="opacity: 0.8; font-size: 0.9em;">({{ reporteSeleccionado.iaConfidence | number:'1.0-0' }}% prob.)</span></div>
+          </div>
           <div class="meta-card">
             <div class="meta-label">Estado Operativo</div>
             <div class="meta-value" [ngClass]="isDispatched ? 'green' : 'red'">

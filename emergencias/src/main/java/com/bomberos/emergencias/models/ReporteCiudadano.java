@@ -33,6 +33,12 @@ public class ReporteCiudadano {
     @Column(name = "celular_reportero", length = 15)
     private String celularReportero;
 
+    @Column(name = "ia_label", length = 100)
+    private String iaLabel;
+
+    @Column(name = "ia_confidence", precision = 5, scale = 2)
+    private BigDecimal iaConfidence;
+
     @Column(name = "fecha_reporte", updatable = false)
     private LocalDateTime fechaReporte = LocalDateTime.now();
 }

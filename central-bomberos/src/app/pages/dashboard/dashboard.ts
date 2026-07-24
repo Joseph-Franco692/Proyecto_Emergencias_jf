@@ -220,7 +220,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     marcador.bindPopup(`
       <div style="font-family:'Barlow',sans-serif; font-size:12px; color:#e2e8f0; background:#0f1218; border:1px solid #2a3348; padding:8px; border-radius:4px;">
         <b style="color:${classif.color}; font-family:'Barlow Condensed',sans-serif; font-size:13px;">${classif.icon} ${classif.title}</b><br>
-        <span style="color:#94a3b8; font-size:10px;">ID: #${rep.id}</span><br>
+        <span style="color:#94a3b8; font-size:10px;">ID: #${rep.id}</span>
+        ${rep.iaLabel ? `<br><span style="color:#d8b4fe; font-size:10.5px; font-weight:600;">🤖 IA: ${rep.iaLabel} (${rep.iaConfidence}%)</span>` : ''}
         <p style="margin:5px 0; color:#cbd5e1; line-height:1.3;">${rep.descripcion}</p>
         <a href="/detalle/${rep.id}" style="color:#a78bfa; font-weight:600; text-decoration:none; display:inline-block; margin-top:4px;">Ver Detalles del Incidente &rarr;</a>
       </div>
