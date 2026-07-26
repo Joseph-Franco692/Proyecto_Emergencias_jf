@@ -1,9 +1,10 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { WebsocketService } from '../../services/websocket';
+import { AuthService, AppUser } from '../../services/auth.service';
 import { Subscription } from 'rxjs';
 import * as L from 'leaflet';
 
@@ -49,7 +50,6 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
   public longitudUnidad: number = -79.177024;
 
   // ─── RUTA POR CALLES (OSRM) ───────────────────────────────────────────────
-  // OSRM es el motor de rutas de OpenStreetMap — 100% gratuito, sin API key
   private readonly OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
   private coordenadasRuta: [number, number][] = [];
   private pasoActualIndex: number = 0;
@@ -60,14 +60,25 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
   private wsSub!: Subscription;
   private timerInterval: any;
   private timerSeconds: number = 0;
-  private recalcInterval: any; // recalcula la ruta cada 15s mientras el GPS avanza
+  private recalcInterval: any;
+
+  public currentUser$: any;
+  public currentUser: AppUser | null = null;
 
   constructor(
     private http: HttpClient,
     private wsService: WebsocketService,
     private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+    private ngZone: NgZone,
+    private authService: AuthService,
+    private router: Router
+  ) {
+    this.currentUser$ = this.authService.getUser$();
+    this.authService.getUser$().subscribe(user => {
+      this.currentUser = user;
+      this.cdr.detectChanges();
+    });
+  }
 
   ngOnInit(): void {
     this.cargarUnidades();
@@ -149,7 +160,6 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
           this.latitudUnidad = pos.coords.latitude;
           this.longitudUnidad = pos.coords.longitude;
 
-          // Solo actualizamos mapa si hay un desplazamiento real (>5m)
           const movimiento = this.calcularDistanciaKm(latAnterior, lngAnterior, this.latitudUnidad, this.longitudUnidad);
           if (movimiento > 0.005 || !latAnterior) {
             this.actualizarPosicionEnMapa();
@@ -168,24 +178,20 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     const pos = new L.LatLng(this.latitudUnidad, this.longitudUnidad);
     this.marcadorUnidad.setLatLng(pos);
 
-    // Seguir el marcador de la unidad en la pantalla (map follow)
     this.mapa.panTo(pos, { animate: true, duration: 0.8 });
 
     if (this.emergenciaActual) {
-      // Actualizar distancia en línea recta
       const dist = this.calcularDistanciaKm(
         this.latitudUnidad, this.longitudUnidad,
         Number(this.emergenciaActual.latitud), Number(this.emergenciaActual.longitud)
       );
       this.distanciaKm = dist.toFixed(2);
 
-      // Determinar la instrucción de giro actual según posición en la ruta
       this.actualizarInstruccionActual();
 
-      // Si nos alejamos mucho de la ruta calculada (>100m), recalcular
       if (this.rutaCalculada && this.coordenadasRuta.length > 0) {
         const distARuta = this.distanciaMinAPolyline();
-        if (distARuta > 0.08) { // 80 metros fuera de ruta
+        if (distARuta > 0.08) {
           console.log('🔄 Recalculando ruta (desvío detectado)...');
           this.calcularRutaOSRM();
         }
@@ -234,7 +240,6 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
 
     setTimeout(() => {
       this.inicializarMapa();
-      // Después de inicializar el mapa, calcular ruta real por calles
       setTimeout(() => this.calcularRutaOSRM(), 400);
     }, 250);
   }
@@ -272,22 +277,18 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     const latInc = Number(this.emergenciaActual.latitud);
     const lngInc = Number(this.emergenciaActual.longitud);
 
-    // Mapa oscuro estilo navegación GPS
     this.mapa = L.map('mapa-unidad', {
       zoomControl: false,
       attributionControl: false
     }).setView([lat, lng], 15);
 
-    // Tiles oscuros estilo navegación (CartoDB Dark Matter)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       subdomains: 'abcd',
       maxZoom: 20
     }).addTo(this.mapa);
 
-    // Zoom control en posición inferior derecha
     L.control.zoom({ position: 'bottomright' }).addTo(this.mapa);
 
-    // Marcador UNIDAD — círculo rojo con 🚒
     const iconoUnidad = L.divIcon({
       className: '',
       html: `<div style="
@@ -308,7 +309,6 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
       .addTo(this.mapa)
       .bindTooltip('📍 Tu posición', { permanent: false, direction: 'top' });
 
-    // Marcador INCIDENTE — pin grande rojo pulsante
     const iconoIncidente = L.divIcon({
       className: '',
       html: `<div style="position:relative; display:flex; align-items:center; justify-content:center;">
@@ -332,7 +332,6 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
       .addTo(this.mapa)
       .bindTooltip(`🚨 Emergencia #${this.emergenciaActual.reporteId}`, { permanent: true, direction: 'top' });
 
-    // Polyline provisional (línea recta) mientras se calcula la ruta real
     this.rutaPolyline = L.polyline([[lat, lng], [latInc, lngInc]], {
       color: '#ff3b3b',
       weight: 4,
@@ -348,13 +347,8 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     setTimeout(() => this.mapa.invalidateSize(), 300);
   }
 
-  // ─── ROUTING OSRM (CALLES REALES) ─────────────────────────────────────────
+  // ─── ROUTING OSRM ───
 
-  /**
-   * Llama a la API pública de OSRM para obtener la ruta real por calles.
-   * OSRM es el motor de routing de OpenStreetMap — 100% gratuito, sin API key.
-   * Endpoint: https://router.project-osrm.org/route/v1/driving/{lng},{lat};{lng},{lat}
-   */
   public calcularRutaOSRM(): void {
     if (!this.emergenciaActual) return;
 
@@ -368,7 +362,6 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     const lat2 = Number(this.emergenciaActual.latitud);
     const lng2 = Number(this.emergenciaActual.longitud);
 
-    // OSRM usa formato: lng,lat (invertido respecto a Leaflet)
     const url = `${this.OSRM_URL}/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson&steps=true&annotations=false`;
 
     this.http.get<any>(url).subscribe({
@@ -379,13 +372,10 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
           if (respuesta.routes && respuesta.routes.length > 0) {
             const ruta = respuesta.routes[0];
 
-            // ── Extraer coordenadas de la geometría GeoJSON ──
-            // OSRM retorna [lng, lat], Leaflet necesita [lat, lng]
             this.coordenadasRuta = ruta.geometry.coordinates.map(
               (coord: [number, number]) => [coord[1], coord[0]] as [number, number]
             );
 
-            // ── Extraer pasos/instrucciones de giro ──
             this.pasosRuta = [];
             if (ruta.legs && ruta.legs.length > 0) {
               ruta.legs[0].steps.forEach((paso: any) => {
@@ -394,19 +384,17 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
                   icono: this.iconoManeuver(paso.maneuver),
                   nombre: paso.name || '',
                   distancia: paso.distance,
-                  ubicacion: paso.maneuver.location // [lng, lat]
+                  ubicacion: paso.maneuver.location
                 });
               });
             }
 
-            // ── Actualizar distancia y tiempo estimado ──
             this.distanciaRutaKm = (ruta.distance / 1000).toFixed(1);
             const minutos = Math.ceil(ruta.duration / 60);
             this.duracionEstimada = minutos < 60
               ? `${minutos} min`
               : `${Math.floor(minutos / 60)}h ${minutos % 60}min`;
 
-            // ── Dibujar la ruta en el mapa (reemplaza la línea recta) ──
             if (this.rutaPolyline) {
               this.mapa.removeLayer(this.rutaPolyline);
             }
@@ -418,7 +406,6 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
               lineCap: 'round'
             }).addTo(this.mapa);
 
-            // Sombra debajo de la ruta para efecto Google Maps
             L.polyline(this.coordenadasRuta, {
               color: 'rgba(0,0,0,0.4)',
               weight: 9,
@@ -427,14 +414,12 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
               lineCap: 'round'
             }).addTo(this.mapa).bringToBack();
 
-            // Ajustar vista para mostrar la ruta completa
             this.mapa.fitBounds(this.rutaPolyline.getBounds().pad(0.15));
 
             this.rutaCalculada = true;
             this.pasoActualIndex = 0;
             this.actualizarInstruccionActual();
 
-            // Recalcular automáticamente cada 20 segundos mientras se mueve
             if (this.recalcInterval) clearInterval(this.recalcInterval);
             this.recalcInterval = setInterval(() => {
               if (this.fase === 'ruta' && this.emergenciaActual) {
@@ -462,9 +447,6 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Determina la instrucción de giro más cercana a la posición actual.
-   */
   private actualizarInstruccionActual(): void {
     if (!this.pasosRuta || this.pasosRuta.length === 0) return;
 
@@ -475,7 +457,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
       if (!paso.ubicacion) return;
       const dist = this.calcularDistanciaKm(
         this.latitudUnidad, this.longitudUnidad,
-        paso.ubicacion[1], paso.ubicacion[0] // ubicacion es [lng, lat]
+        paso.ubicacion[1], paso.ubicacion[0]
       );
       if (dist < minDist) {
         minDist = dist;
@@ -483,7 +465,6 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Mostrar el paso actual o el siguiente si ya pasamos este punto
     const pasoIdx = Math.min(pasoMasCercano + 1, this.pasosRuta.length - 1);
     const paso = this.pasosRuta[pasoIdx];
     if (paso) {
@@ -493,10 +474,6 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Calcula la distancia mínima desde la posición actual a la polyline de ruta.
-   * Usado para detectar desviaciones y recalcular.
-   */
   private distanciaMinAPolyline(): number {
     if (!this.coordenadasRuta.length) return 0;
     let min = Infinity;
@@ -507,7 +484,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     return min;
   }
 
-  // ─── TRADUCCIÓN DE INSTRUCCIONES OSRM ────────────────────────────────────
+  // ─── TRADUCCIÓN DE INSTRUCCIONES OSRM ───
 
   private traducirManeuver(maneuver: any): string {
     if (!maneuver) return 'Continúa';
@@ -563,7 +540,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     return '⬆️';
   }
 
-  // ─── TIMER DE RUTA ────────────────────────────────────────────────────────
+  // ─── TIMER DE RUTA ───
 
   private iniciarTimerRuta(): void {
     if (this.timerInterval) clearInterval(this.timerInterval);
@@ -579,7 +556,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     }, 1000);
   }
 
-  // ─── ACCIONES DEL OPERADOR ────────────────────────────────────────────────
+  // ─── ACCIONES DEL OPERADOR ───
 
   public marcarLlegada(): void {
     if (!this.unidadActual) return;
@@ -660,7 +637,18 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     );
   }
 
-  // ─── HELPERS ──────────────────────────────────────────────────────────────
+  public logout(): void {
+    this.authService.logout().subscribe({
+      next: () => this.router.navigate(['/login']),
+      error: () => this.router.navigate(['/login'])
+    });
+  }
+
+  public isAdmin(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  // ─── HELPERS ───
 
   private calcularDistanciaKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 6371;

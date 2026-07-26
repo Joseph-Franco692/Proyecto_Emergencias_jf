@@ -1,4 +1,5 @@
 package com.bomberos.emergencias.services;
+
 import com.bomberos.emergencias.models.EvidenciaMultimedia;
 import com.bomberos.emergencias.models.ReporteCiudadano;
 import com.bomberos.emergencias.models.EvidenciaDto;
@@ -15,9 +16,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -36,30 +40,34 @@ public class ReporteService {
 
     @Transactional
     public ReporteCiudadano registrarYNotificar(ReporteCiudadano reporte) {
-        // 1. Guardamos de forma segura en Postgres
         ReporteCiudadano guardado = reporteRepository.save(reporte);
 
-        // 2. CONSTRUIMOS UN PAYLOAD MAP LIMPIO
-        String jsonPayload = "{" +
-                "\"id\":" + guardado.getId() + "," +
-                "\"descripcion\":\"" + guardado.getDescripcion().replace("\"", "\\\"") + "\"," +
-                "\"latitud\":\"" + guardado.getLatitud().toString() + "\"," +
-                "\"longitud\":\"" + guardado.getLongitud().toString() + "\"," +
-                "\"celularReportero\":\"" + (guardado.getCelularReportero() != null ? guardado.getCelularReportero() : "") + "\"," +
-                "\"iaLabel\":\"" + (guardado.getIaLabel() != null ? guardado.getIaLabel() : "") + "\"," +
-                "\"iaConfidence\":\"" + (guardado.getIaConfidence() != null ? guardado.getIaConfidence().toString() : "") + "\"," +
-                "\"fechaReporte\":\"" + guardado.getFechaReporte().toString() + "\"" +
-                "}";
+        Map<String, Object> payloadMap = new HashMap<>();
+        payloadMap.put("id", guardado.getId());
+        payloadMap.put("descripcion", guardado.getDescripcion() != null ? guardado.getDescripcion() : "");
+        payloadMap.put("latitud", guardado.getLatitud() != null ? guardado.getLatitud().toString() : "0");
+        payloadMap.put("longitud", guardado.getLongitud() != null ? guardado.getLongitud().toString() : "0");
+        payloadMap.put("celularReportero", guardado.getCelularReportero() != null ? guardado.getCelularReportero() : "");
+        payloadMap.put("iaLabel", guardado.getIaLabel() != null ? guardado.getIaLabel() : "");
+        payloadMap.put("iaConfidence", guardado.getIaConfidence() != null ? guardado.getIaConfidence().toString() : "0");
+        payloadMap.put("fechaReporte", guardado.getFechaReporte() != null ? guardado.getFechaReporte().toString() : "");
 
-        log.info("--- TRANSMITIENDO EVOLUCIÓN WEBSOCKET: {} ---", jsonPayload);
-
-        // CAMBIO AQUÍ: Enviamos el payload DIRECTO, sin el Optional.of()
-        // Le hacemos un cast a (Object) para que IntelliJ sepa exactamente qué método usar
-        messagingTemplate.convertAndSend("/topic/nuevos-reportes", (Object) jsonPayload);
+        log.info("--- TRANSMITIENDO EVOLUCIÓN WEBSOCKET CON PAYLOAD MAP: {} ---", payloadMap);
+        messagingTemplate.convertAndSend("/topic/nuevos-reportes", (Object) payloadMap);
 
         return guardado;
     }
 
+    /**
+     * Guarda evidencias utilizando Almacenamiento Direccionable por Contenido (CAS).
+     * Calcula el Hash SHA-256 de los bytes del archivo para:
+     * 1. Evitar guardar en Base64 (Práctica recomendada en Sistemas Distribuidos).
+     * 2. Garantizar deduplicación (archivos idénticos se guardan solo una vez).
+     * 3. Permitir verificación de integridad entre nodos distribuidos.
+     */
+    public void guardarEvidenciasMultimedia(ReporteCiudadano reporte, List<EvidenciaDto> archivos) {
+        guardarEvidenciasMultimediaAsincrono(reporte, archivos);
+    }
 
     @Async
     public void guardarEvidenciasMultimediaAsincrono(ReporteCiudadano reporte, List<EvidenciaDto> archivos) {
@@ -68,35 +76,62 @@ public class ReporteService {
         try {
             Files.createDirectories(Paths.get(CARPETA_UPLOADS));
         } catch (IOException e) {
-            log.error("Error creando carpeta: {}", e.getMessage());
+            log.error("Error creando carpeta uploads: {}", e.getMessage());
         }
 
         for (EvidenciaDto archivo : archivos) {
             try {
-                String nombreUnico = UUID.randomUUID().toString() + "_" + archivo.filename();
-                Path rutaCompleta = Paths.get(CARPETA_UPLOADS + nombreUnico);
-                
-                // Escribir los bytes directamente en el archivo
-                Files.write(rutaCompleta, archivo.bytes());
+                if (archivo.bytes() == null || archivo.bytes().length == 0) continue;
 
+                // 1. Calcular Hash SHA-256 del contenido binario
+                String sha256Hex = calcularHashSHA256(archivo.bytes());
+                String extension = extraerExtension(archivo.filename());
+                String nombreHash = sha256Hex + extension;
+
+                Path rutaCompleta = Paths.get(CARPETA_UPLOADS + nombreHash);
+
+                // 2. Deduplicación: Si el archivo ya existe en disco, no se vuelve a escribir
+                if (!Files.exists(rutaCompleta)) {
+                    Files.write(rutaCompleta, archivo.bytes());
+                    log.info("--- [STORAGE-HASH] Archivo nuevo guardado en disco con SHA-256: {} ---", nombreHash);
+                } else {
+                    log.info("--- [STORAGE-HASH] Archivo duplicado detectado por Hash SHA-256 (reutilizando): {} ---", nombreHash);
+                }
+
+                // 3. Registrar referencia en la BD (solo guarda URL relativa y Hash SHA-256)
                 EvidenciaMultimedia evidencia = new EvidenciaMultimedia();
                 evidencia.setReporteCiudadano(reporte);
-                evidencia.setUrlArchivo(rutaCompleta.toString());
+                evidencia.setUrlArchivo("/uploads/" + nombreHash);
+                evidencia.setHashSha256(sha256Hex);
                 evidencia.setTipoArchivo(archivo.contentType() != null && archivo.contentType().contains("video") ? "VIDEO" : "FOTO");
 
                 evidenciaRepository.save(evidencia);
-                log.info("--- HILO SECUNDARIO (Async): Archivo guardado con éxito: {} ---", nombreUnico);
-            } catch (IOException e) {
-                log.error("Error en segundo plano: {}", e.getMessage());
+
+            } catch (Exception e) {
+                log.error("Error procesando evidencia con Hash SHA-256: {}", e.getMessage());
             }
         }
     }
 
-    /**
-     * Consulta el historial completo de reportes ciudadanos en la base de datos.
-     */
+    private String calcularHashSHA256(byte[] data) throws NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(data);
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : hash) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+        return hexString.toString();
+    }
+
+    private String extraerExtension(String filename) {
+        if (filename == null || !filename.contains(".")) return ".jpg";
+        return filename.substring(filename.lastIndexOf("."));
+    }
+
     public List<ReporteCiudadano> obtenerTodosLosReportes() {
-        return reporteRepository.findAll(); // Usa el método nativo de JPA para hacer un "SELECT * FROM"
+        return reporteRepository.findAll();
     }
 
     public Optional<ReporteCiudadano> obtenerReportePorId(Long id) {
@@ -106,5 +141,4 @@ public class ReporteService {
     public List<EvidenciaMultimedia> obtenerEvidenciasPorReporteId(Long id) {
         return evidenciaRepository.findByReporteCiudadanoId(id);
     }
-
 }

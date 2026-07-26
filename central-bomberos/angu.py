@@ -7,7 +7,7 @@ archivo_salida = "contexto_angular.txt"
 extensiones_validas = {'.ts', '.html', '.css'}
 
 # Carpetas pesadas o autogeneradas que ignoraremos por completo
-carpetas_a_ignorar = {'.git', '.angular', '.vscode', 'node_modules', 'public'}
+carpetas_a_ignorar = {'.git', '.angular', '.vscode', 'node_modules', 'public', 'dist'}
 
 with open(archivo_salida, 'w', encoding='utf-8') as salida:
     salida.write("=========================================================\n")

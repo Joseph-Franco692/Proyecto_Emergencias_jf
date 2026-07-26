@@ -112,6 +112,19 @@
       </div>
     </ng-container>
 
+    <!-- ══ VINCULACIÓN A CÓDIGO DE ZONA DEL ADMIN ══ -->
+    <ng-container *ngIf="screen === 'linkZone'">
+      <p class="screen-title">📍 Vinculación a Zona de Trabajo</p>
+      <p class="screen-sub">Ingresa el Código de Zona brindado por tu Administrador (Ej: ZONA-SDMC-2026) para unirte al centro de mando.</p>
+      <div class="form-group">
+        <input type="text" [(ngModel)]="inputZoneCode" placeholder="Ej. ZONA-SDMC-2026" class="inp" style="text-transform: uppercase; font-weight: 700; text-align: center; letter-spacing: 2px;" (keyup.enter)="doLinkZone()">
+        <button class="btn-primary" [disabled]="isLoading" (click)="doLinkZone()">
+          {{ isLoading ? 'Vincular...' : 'Unirme a esta Zona' }}
+        </button>
+        <button class="btn-ghost" (click)="goTo('manual')">← Cancelar</button>
+      </div>
+    </ng-container>
+
     <!-- Loading -->
     <div class="login-loading" *ngIf="isLoading">
       <div class="loader-ring"></div>

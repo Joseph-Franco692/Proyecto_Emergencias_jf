@@ -8,6 +8,9 @@ export interface AppUser {
   email: string;
   name: string;
   picture: string;
+  role?: string; // 'ADMIN' | 'OPERADOR'
+  zoneCode?: string;
+  requiresZoneLinking?: boolean;
   mfaEnabled?: boolean;
   status?: string;
 }
@@ -75,11 +78,32 @@ export class AuthService {
     return this.http.post(`${this.API}/api/auth/verify`, { email, code }).pipe(catchError(this.handleError));
   }
 
+  // ─── VINCULACIÓN A CÓDIGO DE ZONA ─────────────────────────────────────────────
+  linkZone(zoneCode: string, email?: string): Observable<any> {
+    const token = this.getToken();
+    const userEmail = email || this.getUser()?.email;
+    const headers: { [header: string]: string } = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return this.http.post<any>(`${this.API}/api/auth/link-zone`, { zoneCode, email: userEmail }, { headers }).pipe(
+      tap((r: any) => {
+        if (r?.user) {
+          const currentToken = this.getToken();
+          if (currentToken) {
+            this.saveSession(r.user, currentToken);
+          }
+        }
+      }),
+      catchError(this.handleError)
+    );
+  }
+
   // ─── LOGIN MANUAL + 2FA ───────────────────────────────────────────────────────
   loginManualFirstStep(email: string, password: string): Observable<any> {
     return this.http.post<any>(`${this.API}/api/mfa/login`, { email, password }).pipe(
       tap(r => {
-        // Si el backend devuelve token directamente (sin 2FA requerida en un futuro)
         if (r?.token && r?.user) this.saveSession(r.user, r.token);
       }),
       catchError(this.handleError)
@@ -104,6 +128,31 @@ export class AuthService {
     );
   }
 
+  // ─── GESTIÓN DE ROLES (ADMIN) ────────────────────────────────────────────────
+  getUsers(): Observable<AppUser[]> {
+    const token = this.getToken();
+    return this.http.get<AppUser[]>(`${this.API}/api/admin/users`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).pipe(catchError(this.handleError));
+  }
+
+  updateUserRole(userId: string, role: string): Observable<any> {
+    const token = this.getToken();
+    return this.http.put(`${this.API}/api/admin/users/${userId}/role`, { role }, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).pipe(catchError(this.handleError));
+  }
+
+  isAdmin(): boolean {
+    const u = this.getUser();
+    return u?.role === 'ADMIN';
+  }
+
+  isOperador(): boolean {
+    const u = this.getUser();
+    return u?.role === 'OPERADOR';
+  }
+
   // ─── HELPERS ─────────────────────────────────────────────────────────────────
   private saveSession(user: AppUser, token: string): void {
     this.currentUser$.next(user);
@@ -117,7 +166,6 @@ export class AuthService {
     localStorage.removeItem("jwt_user");
   }
 
-  // Transforma cualquier error HTTP en un Observable con mensaje legible
   private handleError(err: HttpErrorResponse): Observable<never> {
     let message = "Error de conexión con el servidor.";
     if (err.error) {

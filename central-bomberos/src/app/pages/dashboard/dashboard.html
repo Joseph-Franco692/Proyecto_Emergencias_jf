@@ -28,6 +28,9 @@
     </div>
   </div>
   <div class="topbar-right">
+    <button *ngIf="currentUser?.role === 'ADMIN'" class="clear-btn" (click)="abrirModalUsuarios()" style="background: rgba(236, 72, 153, 0.12); border-color: rgba(236, 72, 153, 0.3); color: #f472b6;">
+      👥 Permisos Admin
+    </button>
     <button class="clear-btn" (click)="abrirModalHistorial()" style="background: rgba(168, 85, 247, 0.12); border-color: rgba(168, 85, 247, 0.3); color: #c084fc;">
       📚 Historial
     </button>
@@ -53,8 +56,14 @@
     <!-- User Info + Logout -->
     <ng-container *ngIf="currentUser$ | async as user">
       <div class="user-chip">
-        <img [src]="$any(user).picture" [alt]="$any(user).name" class="user-avatar">
+        <img *ngIf="$any(user).picture" [src]="$any(user).picture" [alt]="$any(user).name" class="user-avatar">
         <span class="user-name">{{ $any(user).name?.split(' ')[0] }}</span>
+        <span style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-left: 4px;"
+              [style.background]="$any(user).role === 'ADMIN' ? 'rgba(236,72,153,0.2)' : 'rgba(59,130,246,0.2)'"
+              [style.color]="$any(user).role === 'ADMIN' ? '#f472b6' : '#60a5fa'"
+              [style.border]="$any(user).role === 'ADMIN' ? '1px solid rgba(236,72,153,0.4)' : '1px solid rgba(59,130,246,0.4)'">
+          {{ $any(user).role || 'OPERADOR' }}
+        </span>
       </div>
     </ng-container>
     <button class="logout-btn" (click)="logout()" title="Cerrar sesión">
@@ -236,6 +245,89 @@
           <tr *ngIf="listaHistorialCompleto.length === 0">
             <td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">
               No hay incidentes reportados en la base de datos.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- GESTIÓN DE USUARIOS Y PERMISOS MODAL (ADMIN) -->
+<div class="modal-overlay" *ngIf="showUsuariosModal" (click)="cerrarModalUsuarios()">
+  <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 750px; width: 92%;">
+    <div class="modal-header">
+      <h2 class="modal-title">👥 Control de Permisos y Vinculación de Zonas</h2>
+      <button class="close-btn" (click)="cerrarModalUsuarios()">×</button>
+    </div>
+
+    <!-- Banner Código de Zona de Trabajo -->
+    <div style="background: rgba(236,72,153,0.1); border: 1px solid rgba(236,72,153,0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <div style="font-size: 11px; color: #f472b6; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">📍 Tu Código de Zona para Operadores</div>
+        <div style="font-size: 18px; font-weight: 800; color: #ffffff; letter-spacing: 2px; margin-top: 2px;">
+          {{ currentUser?.zoneCode || 'ZONA-SDMC-2026' }}
+        </div>
+      </div>
+      <button style="background: linear-gradient(135deg, #ec4899, #be185d); color: #fff; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;"
+              (click)="copiarCodigoZona(currentUser?.zoneCode || 'ZONA-SDMC-2026')">
+        📋 Copiar Código
+      </button>
+    </div>
+
+    <div style="max-height: 400px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;">
+      <table class="units-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Correo Electrónico</th>
+            <th>Estado</th>
+            <th>Rol</th>
+            <th>Zona Vinculada</th>
+            <th style="text-align: right;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of listaUsuarios" style="vertical-align: middle;">
+            <td style="font-weight: 600; color: #f1f5f9;">{{ u.name }}</td>
+            <td style="font-size: 0.9em; color: #94a3b8;">{{ u.email }}</td>
+            <td>
+              <span [style.color]="u.status === 'ACTIVE' ? '#4ade80' : '#f87171'" style="font-size: 0.85em; font-weight: 600;">
+                ● {{ u.status }}
+              </span>
+            </td>
+            <td>
+              <span style="padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase;"
+                    [style.background]="u.role === 'ADMIN' ? 'rgba(236,72,153,0.2)' : 'rgba(59,130,246,0.2)'"
+                    [style.color]="u.role === 'ADMIN' ? '#f472b6' : '#60a5fa'"
+                    [style.border]="u.role === 'ADMIN' ? '1px solid rgba(236,72,153,0.4)' : '1px solid rgba(59,130,246,0.4)'">
+                {{ u.role || 'OPERADOR' }}
+              </span>
+            </td>
+            <td>
+              <span style="font-size: 0.85em; font-weight: 700; color: #a78bfa;">
+                {{ u.zoneCode || 'Sin vincular' }}
+              </span>
+            </td>
+            <td style="text-align: right;">
+              <button *ngIf="u.role !== 'ADMIN'"
+                      style="background: linear-gradient(135deg, #db2777, #be185d); color: white; border: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;"
+                      (click)="cambiarRolUsuario(u.id, 'ADMIN')">
+                Promover a Admin
+              </button>
+              <button *ngIf="u.role === 'ADMIN' && u.email !== 'jafranco5@espe.edu.ec'"
+                      style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;"
+                      (click)="cambiarRolUsuario(u.id, 'OPERADOR')">
+                Cambiar a Operador
+              </button>
+              <span *ngIf="u.email === 'jafranco5@espe.edu.ec'" style="font-size: 11px; color: #ec4899; font-style: italic;">
+                Admin Principal
+              </span>
+            </td>
+          </tr>
+          <tr *ngIf="listaUsuarios.length === 0">
+            <td colspan="5" style="text-align: center; padding: 30px; color: #94a3b8;">
+              Cargando usuarios del sistema...
             </td>
           </tr>
         </tbody>

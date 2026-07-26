@@ -47,6 +47,21 @@ public class AuthController {
         ));
     }
 
+    @PostMapping("/link-zone")
+    public ResponseEntity<Map<String, Object>> linkZone(@RequestBody Map<String, String> request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = request.get("email");
+        if (email == null || email.isBlank()) {
+            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+                email = auth.getName();
+            }
+        }
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "El correo es requerido para la vinculación de zona."));
+        }
+        return ResponseEntity.ok(authService.linkUserToZone(email, request.get("zoneCode")));
+    }
+
     @GetMapping("/session")
     public ResponseEntity<Map<String, Object>> getSession() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

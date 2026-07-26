@@ -1,4 +1,4 @@
-import { Component, OnInit, NgZone, ChangeDetectorRef, ChangeDetectionStrategy } from "@angular/core";
+import { Component, OnInit, NgZone, ChangeDetectorRef } from "@angular/core";
 import { Router, ActivatedRoute } from "@angular/router";
 import { AuthService } from "../../services/auth.service";
 import { CommonModule } from "@angular/common";
@@ -8,7 +8,7 @@ import { switchMap, of } from "rxjs";
 declare const google: any;
 const GOOGLE_CLIENT_ID = "972842219867-4t1bv2l523jevau1uqjrforlfoj51hbg.apps.googleusercontent.com";
 
-type Screen = 'google' | 'manual' | 'register' | 'verify' | 'setup2FA' | 'verify2FA';
+type Screen = 'google' | 'manual' | 'register' | 'verify' | 'setup2FA' | 'verify2FA' | 'linkZone';
 
 @Component({
   selector: "app-login",
@@ -29,6 +29,7 @@ export class LoginComponent implements OnInit {
   code = '';
   qrUrl = '';
   qrKey = '';
+  inputZoneCode = '';
 
   constructor(
     private auth: AuthService,
@@ -49,14 +50,29 @@ export class LoginComponent implements OnInit {
       }
     });
 
-    // Si ya hay sesión activa, ir al dashboard
+    // Si ya hay sesión activa, ir al destino según su rol
     this.auth.checkSession().subscribe(ok => {
       if (ok) {
-        this.router.navigate(["/"]);
+        this.redirectByRole();
       } else {
         this.initGoogleButton();
       }
     });
+  }
+
+  private redirectByRole(): void {
+    const user = this.auth.getUser();
+    if (user?.role === 'OPERADOR') {
+      // Si el operador no ha vinculado su Código de Zona, mostrar pantalla de vinculación
+      if (!user.zoneCode || user.requiresZoneLinking) {
+        this.email = user.email || this.email;
+        this.setScreen('linkZone');
+        return;
+      }
+      this.router.navigate(["/unidad"]);
+    } else {
+      this.router.navigate(["/"]);
+    }
   }
 
   // ─── GOOGLE ──────────────────────────────────────────────────────────────────
@@ -87,7 +103,7 @@ export class LoginComponent implements OnInit {
       this.auth.loginWithGoogle(response.credential).subscribe({
         next: () => {
           this.stopLoading();
-          this.router.navigate(["/"]);
+          this.redirectByRole();
         },
         error: (e: Error) => {
           this.stopLoading();
@@ -106,7 +122,6 @@ export class LoginComponent implements OnInit {
     if (s === 'google') setTimeout(() => this.initGoogleButton(), 100);
   }
 
-  // Actualiza la pantalla y fuerza detección de cambios
   private setScreen(s: Screen): void {
     this.screen = s;
     this.cdr.detectChanges();
@@ -162,7 +177,28 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  // ─── LOGIN MANUAL (encadenado con switchMap, no callbacks anidados) ───────────
+  // ─── VINCULAR CÓDIGO DE ZONA ─────────────────────────────────────────────────
+  doLinkZone(): void {
+    if (this.isLoading) return;
+    if (!this.inputZoneCode.trim()) {
+      this.error = "Ingresa el Código de Zona brindado por tu Administrador."; return;
+    }
+    this.startLoading();
+
+    this.auth.linkZone(this.inputZoneCode.trim(), this.email).subscribe({
+      next: (r: any) => {
+        this.stopLoading();
+        this.success = r.message || "¡Zona vinculada exitosamente!";
+        this.redirectByRole();
+      },
+      error: (e: Error) => {
+        this.stopLoading();
+        this.error = e.message;
+      }
+    });
+  }
+
+  // ─── LOGIN MANUAL ─────────────────────────────────────────────────────────────
   doLogin(): void {
     if (this.isLoading) return;
     if (!this.email.trim() || !this.password.trim()) {
@@ -170,17 +206,13 @@ export class LoginComponent implements OnInit {
     }
     this.startLoading();
 
-    // Encadenar loginManualFirstStep → si necesita setup, llama a setupMfa en el mismo stream
     this.auth.loginManualFirstStep(this.email.trim(), this.password).pipe(
       switchMap((r: any) => {
         if (r.requiresMfa) {
-          // Ya tiene 2FA → simplemente pasar el resultado para mostrar la pantalla
           return of({ ...r, _action: 'verify2FA' });
         }
         if (r.requiresMfaSetup) {
-          // Primera vez → llamar setup en el mismo observable
           return this.auth.setupMfa(this.email.trim()).pipe(
-            // Marcar el resultado como 'setup'
             switchMap((setup: any) => of({ ...setup, _action: 'setup2FA' }))
           );
         }
@@ -206,7 +238,7 @@ export class LoginComponent implements OnInit {
             break;
 
           case 'dashboard':
-            this.router.navigate(["/"]);
+            this.redirectByRole();
             break;
 
           default:
@@ -230,7 +262,7 @@ export class LoginComponent implements OnInit {
     this.auth.confirmMfaSetup(this.email, this.code).subscribe({
       next: () => {
         this.stopLoading();
-        this.router.navigate(["/"]);
+        this.redirectByRole();
       },
       error: (e: Error) => {
         this.stopLoading();
@@ -248,7 +280,7 @@ export class LoginComponent implements OnInit {
     this.auth.verifyMfa(this.email, this.code).subscribe({
       next: () => {
         this.stopLoading();
-        this.router.navigate(["/"]);
+        this.redirectByRole();
       },
       error: (e: Error) => {
         this.stopLoading();
@@ -271,6 +303,6 @@ export class LoginComponent implements OnInit {
   }
 
   isManualTab(): boolean {
-    return ['manual', 'register', 'verify', 'setup2FA', 'verify2FA'].includes(this.screen);
+    return ['manual', 'register', 'verify', 'setup2FA', 'verify2FA', 'linkZone'].includes(this.screen);
   }
 }

@@ -277,7 +277,7 @@ Detalles de Contacto:
 
     this.http.post<any>(this.API_URL, formData)
       .pipe(
-        timeout(8000), // Si en 8 segundos no hay respuesta del servidor, lo cortamos para evitar giro infinito
+        timeout(30000), // Timeout amplio para evitar cortar la petición
         catchError(err => {
           if (err.name === 'TimeoutError') {
              // Si fue un timeout pero asumiendo que llegó al backend, lo manejamos.

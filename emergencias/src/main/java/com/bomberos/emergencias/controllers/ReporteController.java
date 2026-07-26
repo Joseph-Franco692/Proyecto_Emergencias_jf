@@ -51,38 +51,12 @@ public class ReporteController {
         nuevoReporte.setLongitud(new BigDecimal(longitud));
         nuevoReporte.setCelularReportero(celularReportero);
 
-        // --- LLAMADA AL MICROSERVICIO DE IA (PYTHON) ---
-        try {
-            RestTemplate restTemplate = new RestTemplate();
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        // IA deshabilitada: el modelo de deep learning bloqueaba el flujo WebSocket
+        // cuando el servicio Python no estaba corriendo (timeout de ~30s).
+        nuevoReporte.setIaLabel("Pendiente");
+        nuevoReporte.setIaConfidence(BigDecimal.ZERO);
 
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("text", descripcion);
-            if (fotos != null && fotos.length > 0 && !fotos[0].isEmpty()) {
-                body.add("image", fotos[0].getResource());
-            }
-
-            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity("http://localhost:8000/predict", requestEntity, Map.class);
-            
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                Map<String, Object> resBody = response.getBody();
-                nuevoReporte.setIaLabel((String) resBody.get("label"));
-                
-                Object confObj = resBody.get("percentage");
-                if (confObj instanceof Number) {
-                    nuevoReporte.setIaConfidence(new BigDecimal(((Number) confObj).doubleValue()));
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Error llamando a la IA: " + e.getMessage());
-            nuevoReporte.setIaLabel("Sin Análisis (Error IA)");
-            nuevoReporte.setIaConfidence(BigDecimal.ZERO);
-        }
-        // ----------------------------------------------
-
-        // 1. Guardamos en la base de datos
+        // 1. Guardamos en la base de datos y notificamos por WebSocket INMEDIATAMENTE
         ReporteCiudadano reporteGuardado = reporteService.registrarYNotificar(nuevoReporte);
 
         // Convertimos las fotos a DTOs con sus bytes leídos en el hilo principal
@@ -103,15 +77,15 @@ public class ReporteController {
             }
         }
 
-        // 2. Procesamos las fotos en el hilo secundario asincrónico pasándole los bytes cargados
+        // 2. Procesamos las fotos en hilo secundario
         reporteService.guardarEvidenciasMultimediaAsincrono(reporteGuardado, evidenciasDto);
 
         // Retornamos la respuesta como Map para evitar cualquier error de serialización Jackson con la Entidad JPA
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", reporteGuardado.getId());
-        response.put("mensaje", "Reporte creado exitosamente");
+        Map<String, Object> responseMap = new HashMap<>();
+        responseMap.put("id", reporteGuardado.getId());
+        responseMap.put("mensaje", "Reporte creado exitosamente");
         
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(responseMap);
     }
 
     @GetMapping // Responde a: GET http://localhost:8081/api/reportes

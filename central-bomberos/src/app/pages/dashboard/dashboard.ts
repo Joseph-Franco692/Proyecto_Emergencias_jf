@@ -4,7 +4,8 @@ import { HttpClient } from '@angular/common/http';
 import { Router, RouterModule } from '@angular/router'; 
 import { FormsModule } from '@angular/forms';
 import { WebsocketService } from '../../services/websocket';
-import { AuthService } from '../../services/auth.service';
+import { Subscription } from 'rxjs';
+import { AuthService, AppUser } from '../../services/auth.service';
 import * as L from 'leaflet';
 import { ViewEncapsulation } from '@angular/core';
 
@@ -21,6 +22,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private mapa!: L.Map;
   private markersMap: Map<number, L.Marker> = new Map();
   private newlyArrivedIds: Set<number> = new Set();
+  private wsSub!: Subscription;
   
   // Real-time properties
   public clockTime: string = '--:--:--';
@@ -54,8 +56,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public showHistorialModal: boolean = false;
   public listaHistorialCompleto: any[] = [];
 
-  // Usuario actual (se inicializa en el constructor)
+  // Gestión de Usuarios (Admin)
+  public showUsuariosModal: boolean = false;
+  public listaUsuarios: any[] = [];
+
+  // Usuario actual
   public currentUser$: any;
+  public currentUser: AppUser | null = null;
 
   constructor(
     private http: HttpClient, 
@@ -66,6 +73,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private router: Router
   ) {
     this.currentUser$ = this.authService.getUser$();
+    this.authService.getUser$().subscribe(user => {
+      this.currentUser = user;
+      this.cdr.detectChanges();
+    });
   }
 
   ngOnInit(): void {
@@ -75,23 +86,52 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.iniciarMonitoreoHilos();
     this.iniciarMetricasSimuladas();
 
-    this.wsService.escucharNuevosReportes().subscribe({
-      next: (reporteRecibido) => {
-        let reporteFormateado = typeof reporteRecibido === 'string' ? JSON.parse(reporteRecibido) : reporteRecibido;
+    // ─── SUSCRIPCIÓN WEBSOCKET: REPORTES EN TIEMPO REAL ─────────────────────────
+    this.wsSub = this.wsService.escucharNuevosReportes().subscribe({
+      next: (reporteRecibido: any) => {
+        // Parseo defensivo del payload
+        const rep = typeof reporteRecibido === 'string'
+          ? JSON.parse(reporteRecibido)
+          : reporteRecibido;
+
+        // REGLA 4: Manejo de tipos en Leaflet (Casteo estricto a Number)
+        const id = Number(rep.id);
+        const lat = Number(rep.latitud);
+        const lng = Number(rep.longitud);
+
+        console.log(`[WS-DASHBOARD] Reporte #${id} recibido en tiempo real (${lat}, ${lng})`);
+
+        // REGLA 2: Contexto de Ejecución (NgZone)
         this.ngZone.run(() => {
-          // Guardar el ID como nuevo para efecto visual
-          this.newlyArrivedIds.add(reporteFormateado.id);
+          
+          this.newlyArrivedIds.add(id);
           setTimeout(() => {
-            this.newlyArrivedIds.delete(reporteFormateado.id);
+            this.newlyArrivedIds.delete(id);
             this.cdr.detectChanges();
           }, 5000);
 
-          this.listaReportes = [reporteFormateado, ...this.listaReportes]; 
-          this.cdr.detectChanges(); 
+          // REGLA 1: Inmutabilidad Absoluta (Reconstrucción del array)
+          const yaExiste = this.listaReportes.some(r => Number(r.id) === id);
+          if (!yaExiste) {
+            this.listaReportes = [rep, ...this.listaReportes];
+          }
+
+          this.agregarMarcador(rep);
+
+          // REGLA 4 (Aplicada): Coordenadas numéricas para la animación
+          if (this.mapa && !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+            this.mapa.flyTo([lat, lng], 16, { animate: true, duration: 1.2 });
+            setTimeout(() => {
+              const marker = this.markersMap.get(id);
+              if (marker) marker.openPopup();
+            }, 400);
+          }
+
+          // REGLA 3: Detección de Cambios Manual
+          this.cdr.detectChanges();
         });
-        this.agregarMarcador(reporteFormateado);
-        this.selectReport(reporteFormateado);
-      }
+      },
+      error: (err: any) => console.error('[WS-DASHBOARD] Error en suscripción WebSocket:', err)
     });
 
     this.wsService.escucharUnidadesEstado().subscribe({
@@ -110,7 +150,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+
+
+
+
+
+
   ngOnDestroy(): void {
+    if (this.wsSub) this.wsSub.unsubscribe();
     if (this.clockInterval) clearInterval(this.clockInterval);
     if (this.threadInterval) clearInterval(this.threadInterval);
     if (this.metricsInterval) clearInterval(this.metricsInterval);
@@ -154,12 +201,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private iniciarMapa(): void {
-    // Coordenadas de Santo Domingo, Ecuador [-0.253, -79.177]
     this.mapa = L.map('mapa-bomberos', {
-      zoomControl: false // Ocultamos el zoom predeterminado para usar el diseño personalizado si es necesario
+      zoomControl: false
     }).setView([-0.253012, -79.177024], 13);
 
-    // Mapa más claro y fluido para mejor lectura en UI/UX
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       subdomains: 'abcd',
@@ -168,7 +213,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       detectRetina: true
     }).addTo(this.mapa);
 
-    // Añadir controles de zoom de Leaflet arriba a la derecha para no tapar la leyenda
     L.control.zoom({ position: 'topright' }).addTo(this.mapa);
 
     setTimeout(() => this.mapa.invalidateSize(), 500);
@@ -178,7 +222,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.http.get<any[]>(this.API_URL).subscribe({
       next: (historial) => {
         this.ngZone.run(() => {
-          // Filtrar los que ya fueron cerrados visualmente en el dashboard
           this.listaReportes = historial.reverse().filter(rep => !localStorage.getItem('closed_report_' + rep.id));
           this.cdr.detectChanges(); 
         });
@@ -189,61 +232,72 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private agregarMarcador(rep: any): void {
-    const classif = this.clasificarReporte(rep.descripcion);
+    if (!rep || rep.latitud === undefined || rep.longitud === undefined) return;
     const lat = Number(rep.latitud);
     const lng = Number(rep.longitud);
+    const repId = Number(rep.id);
+    if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return;
 
-    let ringBg = 'rgba(59,130,246,0.2)';
-    if (classif.severity === 'critical') ringBg = 'rgba(255,59,59,0.3)';
-    else if (classif.severity === 'high') ringBg = 'rgba(245,158,11,0.2)';
+    if (this.markersMap.has(repId)) {
+      return;
+    }
 
-    // DivIcon mapping structure of the pin
+    const classif = this.clasificarReporte(rep.descripcion);
     const shortTitle = classif.title.split(' ').slice(0, 2).join(' ');
+
     const pinIcon = L.divIcon({
       className: 'custom-leaflet-marker',
       html: `
         <div class="map-pin">
           <div class="google-gps-pin">
-            <svg viewBox="0 0 24 24" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 24 24" width="40" height="48" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ea4335" stroke="#ffffff" stroke-width="1.8"/>
             </svg>
           </div>
-          <div class="pin-label">#${rep.id} · ${shortTitle}</div>
+          <div class="pin-label">#${repId} · ${shortTitle}</div>
         </div>
       `,
-      iconSize: [70, 62],
-      iconAnchor: [35, 58],
-      popupAnchor: [0, -45]
+      iconSize: [40, 50],
+      iconAnchor: [20, 48],
+      popupAnchor: [0, -48]
     });
 
     const marcador = L.marker([lat, lng], { icon: pinIcon }).addTo(this.mapa);
     marcador.bindPopup(`
       <div style="font-family:'Barlow',sans-serif; font-size:12px; color:#e2e8f0; background:#0f1218; border:1px solid #2a3348; padding:8px; border-radius:4px;">
         <b style="color:${classif.color}; font-family:'Barlow Condensed',sans-serif; font-size:13px;">${classif.icon} ${classif.title}</b><br>
-        <span style="color:#94a3b8; font-size:10px;">ID: #${rep.id}</span>
+        <span style="color:#94a3b8; font-size:10px;">ID: #${repId}</span>
         ${rep.iaLabel ? `<br><span style="color:#d8b4fe; font-size:10.5px; font-weight:600;">🤖 IA: ${rep.iaLabel} (${rep.iaConfidence}%)</span>` : ''}
         <p style="margin:5px 0; color:#cbd5e1; line-height:1.3;">${rep.descripcion}</p>
-        <a href="/detalle/${rep.id}" style="color:#a78bfa; font-weight:600; text-decoration:none; display:inline-block; margin-top:4px;">Ver Detalles del Incidente &rarr;</a>
+        <a href="/detalle/${repId}" style="color:#a78bfa; font-weight:600; text-decoration:none; display:inline-block; margin-top:4px;">Ver Detalles del Incidente &rarr;</a>
       </div>
     `, {
       closeButton: false,
       className: 'custom-popup'
     });
 
-    this.markersMap.set(rep.id, marcador);
+    this.markersMap.set(repId, marcador);
   }
 
   public selectReport(rep: any): void {
+    if (!rep || rep.latitud === undefined || rep.longitud === undefined) return;
     const lat = Number(rep.latitud);
     const lng = Number(rep.longitud);
-    this.mapa.flyTo([lat, lng], 15);
-    
-    setTimeout(() => {
-      const marker = this.markersMap.get(rep.id);
-      if (marker) {
-        marker.openPopup();
+    const repId = Number(rep.id);
+    if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return;
+
+    this.ngZone.run(() => {
+      if (this.mapa) {
+        this.mapa.flyTo([lat, lng], 16, { animate: true, duration: 1.2 });
       }
-    }, 400);
+      setTimeout(() => {
+        const marker = this.markersMap.get(repId);
+        if (marker) {
+          marker.openPopup();
+        }
+      }, 350);
+      this.cdr.detectChanges();
+    });
   }
 
   public limpiarTodosLosIncidentes(): void {
@@ -253,26 +307,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     if (confirm('¿Está seguro de que desea limpiar y dar por solucionados todos los incidentes activos del panel central?')) {
-      // 1. Guardar todos en localStorage como cerrados
       this.listaReportes.forEach((rep) => {
         localStorage.setItem('closed_report_' + rep.id, 'true');
       });
 
-      // 2. Quitar los marcadores del mapa
       this.markersMap.forEach((marker) => {
         this.mapa.removeLayer(marker);
       });
       this.markersMap.clear();
 
-      // 3. Vaciar la lista local y actualizar la vista
       this.listaReportes = [];
       this.cdr.detectChanges();
-
-      console.log('Dashboard central limpio.');
     }
   }
 
-  // Visual helper methods mapping classification
   public clasificarReporte(desc: string): any {
     const text = (desc || '').toLowerCase();
     if (text.includes('incendio') || text.includes('fuego') || text.includes('quema') || text.includes('atrapad') || text.includes('llama')) {
@@ -357,7 +405,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         mainTag: 'Rescate necesario'
       };
     }
-    // Default
     return {
       severity: 'medium',
       title: 'REPORTE CIUDADANO',
@@ -411,7 +458,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const dots: string[] = [];
     const active = this.threadStats.activeCount;
     const max = this.threadStats.maxPoolSize;
-    // Core threads showing as green/active, other busy threads as amber, rest empty
     for (let i = 0; i < max; i++) {
       if (i < active) {
         dots.push('active');
@@ -424,8 +470,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return dots;
   }
 
-  // --- MÉTODOS CRUD DE UNIDADES ---
-
+  // ─── MÉTODOS CRUD DE UNIDADES ───
   public abrirModalUnidades(): void {
     this.showUnidadesModal = true;
     this.cargarUnidades();
@@ -476,7 +521,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ─── LÓGICA DE REPORTES FINALES (BITÁCORAS) ───
+  // ─── LÓGICA DE REPORTES FINALES ───
   public abrirModalReportes(): void {
     this.showReportesModal = true;
     this.cargarReportesFinales();
@@ -496,7 +541,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ─── LÓGICA DE HISTORIAL DE INCIDENTES CIUDADANOS ───
+  // ─── LÓGICA DE HISTORIAL DE INCIDENTES ───
   public abrirModalHistorial(): void {
     this.showHistorialModal = true;
     this.cargarHistorialCompleto();
@@ -514,6 +559,42 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
       error: (err) => console.error('Error cargando historial completo', err)
     });
+  }
+
+  // ─── GESTIÓN DE USUARIOS Y ROLES (ADMIN) ───
+  public abrirModalUsuarios(): void {
+    this.showUsuariosModal = true;
+    this.cargarUsuarios();
+  }
+
+  public cerrarModalUsuarios(): void {
+    this.showUsuariosModal = false;
+  }
+
+  public cargarUsuarios(): void {
+    this.authService.getUsers().subscribe({
+      next: (data) => {
+        this.listaUsuarios = data;
+        this.cdr.detectChanges();
+      },
+      error: (err) => alert('Error al cargar usuarios: ' + err.message)
+    });
+  }
+
+  public cambiarRolUsuario(userId: string, nuevoRol: string): void {
+    this.authService.updateUserRole(userId, nuevoRol).subscribe({
+      next: (resp) => {
+        alert(resp.message || 'Rol actualizado correctamente');
+        this.cargarUsuarios();
+      },
+      error: (err) => alert('Error actualizando rol: ' + err.message)
+    });
+  }
+
+  public copiarCodigoZona(code: string): void {
+    if (!code) return;
+    navigator.clipboard.writeText(code);
+    alert('✅ Código de Zona copiado al portapapeles:\n' + code + '\n\nCompártelo a tus operadores para que se vinculen a tu centro de mando.');
   }
 
   public logout(): void {

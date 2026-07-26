@@ -28,24 +28,23 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // 1. CORS configurado desde este mismo bean
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            // 2. CSRF desactivado (API REST stateless)
             .csrf(AbstractHttpConfigurer::disable)
-            // 3. Autorización por endpoint
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/api/auth/**",  // registro, login-google, verify, session, logout
-                    "/api/mfa/**",   // login manual, setup 2fa, confirm, verify
+                    "/api/auth/**",       // registro, login-google, verify, session, logout
+                    "/api/mfa/**",        // login manual, setup 2fa, confirm, verify
                     "/api/health",
+                    "/ws-emergencias/**", // WebSocket STOMP & SockJS handshake
+                    "/ws-emergencias",
                     "/ws/**",
-                    "/api/reportes/ciudadano"
+                    "/uploads/**",        // evidencia multimedia
+                    "/api/reportes",      // creación de reportes ciudadanos
+                    "/api/reportes/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
-            // 4. Sesión stateless — usamos JWT, no cookies de sesión
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            // 5. Proveedor de autenticación + filtro JWT
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -56,7 +55,6 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Orígenes permitidos — Angular dev
         config.setAllowedOrigins(Arrays.asList(
             "http://localhost:4200",
             "http://localhost:4201",
@@ -64,12 +62,8 @@ public class SecurityConfig {
         ));
 
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-
-        // Cabeceras permitidas — incluye Authorization para JWT
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
-
-        // NO credenciales — Angular usa Authorization header, no cookies
         config.setAllowCredentials(false);
         config.setMaxAge(3600L);
 

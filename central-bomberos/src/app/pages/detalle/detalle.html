@@ -39,16 +39,24 @@
         </div>
         <div class="media-grid">
           <!-- Real uploaded files from the database -->
-          <div *ngFor="let ev of evidencias" class="media-thumb">
+          <div *ngFor="let ev of evidencias; let i = index" class="media-thumb" (click)="ev.tipoArchivo === 'FOTO' ? abrirImagen(ev.urlArchivo) : null">
             <img *ngIf="ev.tipoArchivo === 'FOTO'" [src]="getMediaUrl(ev.urlArchivo)" class="media-img" alt="Evidencia Ciudadana">
-            <video *ngIf="ev.tipoArchivo === 'VIDEO'" [src]="getMediaUrl(ev.urlArchivo)" class="media-img" controls style="width: 100%; height: 100%; object-fit: cover;"></video>
-            <div class="media-overlay" *ngIf="ev.tipoArchivo === 'FOTO'">🔍</div>
+            <video *ngIf="ev.tipoArchivo === 'VIDEO'" [src]="getMediaUrl(ev.urlArchivo)" class="media-img" controls style="width: 100%; height: 100%; object-fit: contain; background: #000;"></video>
+            <div class="media-overlay" *ngIf="ev.tipoArchivo === 'FOTO'">🔍 Ver imagen</div>
           </div>
           <!-- Fallback if no real files exist in the report -->
           <div *ngIf="evidencias.length === 0" style="grid-column: 1 / -1; padding: 24px; background: rgba(255, 255, 255, 0.02); border: 1.2px dashed var(--border); border-radius: 8px; text-align: center; color: var(--text2);">
             <span style="font-size: 20px; display: block; margin-bottom: 6px;">📁</span>
             No se adjuntaron evidencias multimedia para este reporte.
           </div>
+        </div>
+      </div>
+
+      <!-- Lightbox Modal para ver imagen completa -->
+      <div class="lightbox-overlay" *ngIf="imagenAbierta" (click)="cerrarImagen()">
+        <div class="lightbox-content" (click)="$event.stopPropagation()">
+          <img [src]="imagenAbiertaUrl" alt="Evidencia ampliada" class="lightbox-img">
+          <button class="lightbox-close" (click)="cerrarImagen()">✕</button>
         </div>
       </div>
 

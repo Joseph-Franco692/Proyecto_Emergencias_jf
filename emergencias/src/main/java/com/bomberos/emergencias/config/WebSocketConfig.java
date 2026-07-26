@@ -18,7 +18,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Al usar setAllowedOriginPatterns y combining withSockJS, abrimos la tubería a navegadores modernos
+        // Registramos tanto WebSocket Nativo (Ultra Rápido <5ms) como SockJS Fallback
+        registry.addEndpoint("/ws-emergencias")
+                .setAllowedOriginPatterns("*");
+
         registry.addEndpoint("/ws-emergencias")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();

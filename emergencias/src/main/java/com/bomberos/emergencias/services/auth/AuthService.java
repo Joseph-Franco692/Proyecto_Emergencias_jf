@@ -39,60 +39,65 @@ public class AuthService {
     // ─── REGISTRO MANUAL ──────────────────────────────────────────────────────────
     @Transactional
     public Map<String, Object> registerManual(String name, String email, String password) {
-        // Validaciones básicas
         if (name == null || name.isBlank())     throw new RuntimeException("El nombre es requerido.");
         if (email == null || email.isBlank())   throw new RuntimeException("El correo es requerido.");
         if (password == null || password.isBlank()) throw new RuntimeException("La contraseña es requerida.");
         if (password.length() < 6)              throw new RuntimeException("La contraseña debe tener al menos 6 caracteres.");
 
-        Optional<Usuario> existingOpt = repository.findByEmail(email.toLowerCase().trim());
+        String cleanEmail = email.toLowerCase().trim();
+        boolean isAdminEmail = "jafranco5@espe.edu.ec".equalsIgnoreCase(cleanEmail);
+        String role = isAdminEmail ? "ADMIN" : "OPERADOR";
+        String zoneCode = isAdminEmail ? "ZONA-SDMC-2026" : null;
+
+        Optional<Usuario> existingOpt = repository.findByEmail(cleanEmail);
 
         if (existingOpt.isPresent()) {
             Usuario existing = existingOpt.get();
 
             if ("ACTIVE".equals(existing.getStatus())) {
-                // Cuenta activa con 2FA configurado (oauth o manual ya verificado)
                 throw new RuntimeException("El correo ya tiene una cuenta activa. Inicia sesión directamente.");
             }
 
-            // Cuenta INACTIVE — reenviar código con datos actualizados
             String code = generateCode();
             existing.setName(name.trim());
             existing.setPasswordHash(passwordEncoder.encode(password));
+            existing.setRole(role);
+            if (isAdminEmail) existing.setZoneCode(zoneCode);
             existing.setVerificationCode(code);
             existing.setExpiresAt(LocalDateTime.now().plusMinutes(10));
             existing.setVerificationAttempts(0);
             existing.setUpdatedAt(LocalDateTime.now());
             repository.save(existing);
 
-            sendVerificationEmail(email.toLowerCase().trim(), name.trim(), code);
+            sendVerificationEmail(cleanEmail, name.trim(), code);
 
             return Map.of(
                 "success", true,
                 "message", "Ya existía un registro pendiente. Nuevo código enviado a tu correo.",
-                "email", email.toLowerCase().trim()
+                "email", cleanEmail
             );
         }
 
-        // Usuario completamente nuevo
         String code = generateCode();
 
         Usuario user = new Usuario();
         user.setName(name.trim());
-        user.setEmail(email.toLowerCase().trim());
+        user.setEmail(cleanEmail);
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setStatus("INACTIVE");
+        user.setRole(role);
+        if (isAdminEmail) user.setZoneCode(zoneCode);
         user.setVerificationCode(code);
         user.setExpiresAt(LocalDateTime.now().plusMinutes(10));
         user.setVerificationAttempts(0);
         repository.save(user);
 
-        sendVerificationEmail(email.toLowerCase().trim(), name.trim(), code);
+        sendVerificationEmail(cleanEmail, name.trim(), code);
 
         return Map.of(
             "success", true,
             "message", "Cuenta creada. Revisa tu correo para obtener el código de verificación (válido 10 min).",
-            "email", email.toLowerCase().trim()
+            "email", cleanEmail
         );
     }
 
@@ -144,7 +149,6 @@ public class AuthService {
             throw new RuntimeException("El código expiró. Haz clic en 'Reenviar código' para obtener uno nuevo.");
         }
 
-        // Limitar intentos fallidos
         if (user.getVerificationAttempts() >= 5) {
             throw new RuntimeException("Demasiados intentos fallidos. Solicita un código nuevo.");
         }
@@ -156,7 +160,6 @@ public class AuthService {
             throw new RuntimeException("Código incorrecto. Te quedan " + remaining + " intentos.");
         }
 
-        // Activar cuenta
         user.setStatus("ACTIVE");
         user.setVerificationCode(null);
         user.setExpiresAt(null);
@@ -186,7 +189,6 @@ public class AuthService {
             throw new RuntimeException("Cuenta inactiva o suspendida. Contacta al administrador.");
         }
 
-        // Verificar contraseña mediante Spring Security
         try {
             authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email.toLowerCase().trim(), password)
@@ -200,12 +202,10 @@ public class AuthService {
         response.put("user", buildUserDto(user));
 
         if (user.isMfaEnabled()) {
-            // Ya tiene 2FA — pedir código del Authenticator
             response.put("requiresMfa", true);
             response.put("requiresMfaSetup", false);
             response.put("message", "Ingresa el código de 6 dígitos de tu Authenticator.");
         } else {
-            // Primera vez — solicitar setup del QR
             response.put("requiresMfa", false);
             response.put("requiresMfaSetup", true);
             response.put("message", "Configura la autenticación en dos pasos (2FA) para continuar.");
@@ -238,24 +238,30 @@ public class AuthService {
                 name = email.split("@")[0];
             }
 
+            boolean isAdminEmail = "jafranco5@espe.edu.ec".equalsIgnoreCase(email);
+            String role = isAdminEmail ? "ADMIN" : "OPERADOR";
             Usuario user = repository.findByEmail(email).orElse(null);
 
             if (user == null) {
-                // Registro automático con Google
                 user = new Usuario();
                 user.setEmail(email);
                 user.setName(name);
                 user.setStatus("ACTIVE");
+                user.setRole(role);
+                if (isAdminEmail) user.setZoneCode("ZONA-SDMC-2026");
                 user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
                 user = repository.save(user);
-                System.out.println("[GOOGLE-AUTH] Nuevo usuario registrado: " + email);
+                System.out.println("[GOOGLE-AUTH] Nuevo usuario registrado (" + role + "): " + email);
             } else {
-                // Actualizar nombre/foto y activar si estaba INACTIVE
                 if (!name.equals(user.getName())) user.setName(name);
                 if (!"ACTIVE".equals(user.getStatus())) user.setStatus("ACTIVE");
+                if (isAdminEmail) {
+                    user.setRole("ADMIN");
+                    if (user.getZoneCode() == null) user.setZoneCode("ZONA-SDMC-2026");
+                }
                 user.setUpdatedAt(LocalDateTime.now());
                 user = repository.save(user);
-                System.out.println("[GOOGLE-AUTH] Usuario autenticado: " + email);
+                System.out.println("[GOOGLE-AUTH] Usuario autenticado (" + user.getRole() + "): " + email);
             }
 
             String token = jwtService.generateToken(user);
@@ -277,6 +283,39 @@ public class AuthService {
         }
     }
 
+    // ─── VINCULAR OPERADOR A CÓDIGO DE ZONA DEL ADMIN ─────────────────────────────
+    @Transactional
+    public Map<String, Object> linkUserToZone(String email, String zoneCodeInput) {
+        if (zoneCodeInput == null || zoneCodeInput.isBlank()) {
+            throw new RuntimeException("El código de zona es requerido.");
+        }
+
+        String cleanCode = zoneCodeInput.trim().toUpperCase();
+
+        // Verificar que el código corresponda a un Admin o sea ZONA-SDMC-2026
+        boolean zoneExists = repository.findAll().stream()
+                .anyMatch(u -> "ADMIN".equalsIgnoreCase(u.getRole()) && cleanCode.equalsIgnoreCase(u.getZoneCode()));
+
+        if (!zoneExists && !"ZONA-SDMC-2026".equalsIgnoreCase(cleanCode)) {
+            throw new RuntimeException("El Código de Zona '" + cleanCode + "' no es válido o no existe un Administrador con ese código.");
+        }
+
+        Usuario user = repository.findByEmail(email.toLowerCase().trim())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado."));
+
+        user.setZoneCode(cleanCode);
+        user.setUpdatedAt(LocalDateTime.now());
+        repository.save(user);
+
+        System.out.printf("[ZONE-LINK] Operador %s vinculado exitosamente a la Zona %s%n", email, cleanCode);
+
+        return Map.of(
+            "success", true,
+            "message", "¡Te has vinculado exitosamente a la Zona " + cleanCode + "!",
+            "user", buildUserDto(user)
+        );
+    }
+
     // ─── OBTENER SESIÓN ───────────────────────────────────────────────────────────
     public Map<String, Object> getSessionUser(String email) {
         Usuario user = repository.findByEmail(email)
@@ -290,7 +329,6 @@ public class AuthService {
 
     // ─── HELPERS PRIVADOS ─────────────────────────────────────────────────────────
     private String generateCode() {
-        // Siempre 6 dígitos (con ceros a la izquierda si hace falta)
         return String.format("%06d", new Random().nextInt(1_000_000));
     }
 
@@ -299,7 +337,6 @@ public class AuthService {
             emailService.sendVerificationEmail(email, name, code);
             System.out.printf("[AUTH] Correo enviado a %s | código: %s%n", email, code);
         } catch (Exception e) {
-            // El correo falló pero el usuario ya está en BD — mostramos el código en consola
             System.err.printf("[AUTH] No se pudo enviar correo a %s: %s%n", email, e.getMessage());
             System.out.printf("[AUTH] *** CÓDIGO PARA PRUEBAS (consola): %s ***%n", code);
         }
@@ -307,12 +344,15 @@ public class AuthService {
 
     public Map<String, Object> buildUserDto(Usuario user) {
         Map<String, Object> dto = new HashMap<>();
-        dto.put("id",         user.getId().toString());
-        dto.put("name",       user.getName());
-        dto.put("email",      user.getEmail());
-        dto.put("status",     user.getStatus());
-        dto.put("mfaEnabled", user.isMfaEnabled());
-        dto.put("picture",    "");
+        dto.put("id",                  user.getId().toString());
+        dto.put("name",                user.getName());
+        dto.put("email",               user.getEmail());
+        dto.put("status",              user.getStatus());
+        dto.put("role",                user.getRole() != null ? user.getRole() : "OPERADOR");
+        dto.put("zoneCode",            user.getZoneCode());
+        dto.put("requiresZoneLinking", "OPERADOR".equals(user.getRole()) && (user.getZoneCode() == null || user.getZoneCode().isBlank()));
+        dto.put("mfaEnabled",          user.isMfaEnabled());
+        dto.put("picture",             "");
         return dto;
     }
 }

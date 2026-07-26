@@ -17,6 +17,8 @@ export class DetalleComponent implements OnInit, OnDestroy {
   public idIncidente: string | null = null;
   public evidencias: any[] = [];
   public isDispatched: boolean = false;
+  public imagenAbierta: boolean = false;
+  public imagenAbiertaUrl: string = '';
   public classif: any = {
     severity: 'medium',
     title: 'REPORTE CIUDADANO',
@@ -192,8 +194,26 @@ export class DetalleComponent implements OnInit, OnDestroy {
 
   public getMediaUrl(url: string): string {
     if (!url) return '';
-    const cleanedUrl = url.replace(/\\/g, '/');
-    return `http://localhost:8081/${encodeURI(cleanedUrl)}`;
+    let cleanedUrl = url.replace(/\\/g, '/');
+    if (cleanedUrl.startsWith('http://') || cleanedUrl.startsWith('https://')) {
+      return cleanedUrl;
+    }
+    if (cleanedUrl.startsWith('/')) {
+      cleanedUrl = cleanedUrl.substring(1);
+    }
+    return `http://localhost:8081/${cleanedUrl}`;
+  }
+
+  public abrirImagen(urlArchivo: string): void {
+    this.imagenAbiertaUrl = this.getMediaUrl(urlArchivo);
+    this.imagenAbierta = true;
+    this.cdr.detectChanges();
+  }
+
+  public cerrarImagen(): void {
+    this.imagenAbierta = false;
+    this.imagenAbiertaUrl = '';
+    this.cdr.detectChanges();
   }
 
   public formatTime(dateStr: string): string {

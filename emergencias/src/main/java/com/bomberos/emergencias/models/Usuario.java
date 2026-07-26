@@ -3,10 +3,11 @@ package com.bomberos.emergencias.models;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -28,6 +29,11 @@ public class Usuario implements UserDetails {
 
     @Column(nullable = false)
     private String status = "INACTIVE";
+
+    @Column(nullable = false)
+    private String role = "OPERADOR";
+
+    private String zoneCode;
 
     private boolean mfaEnabled = false;
 
@@ -53,7 +59,7 @@ public class Usuario implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.emptyList();
+        return List.of(new SimpleGrantedAuthority("ROLE_" + (role != null ? role : "OPERADOR")));
     }
 
     @Override

@@ -1,40 +1,46 @@
 import { Injectable } from '@angular/core';
 import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
-import { Observable, Subject } from 'rxjs';
+import { Observable, ReplaySubject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class WebsocketService {
   private stompClient!: Client;
-  private reportesSubject: Subject<any> = new Subject<any>();
-  private unidadesSubject: Subject<any> = new Subject<any>();
+  private reportesSubject: ReplaySubject<any> = new ReplaySubject<any>(1);
+  private unidadesSubject: ReplaySubject<any> = new ReplaySubject<any>(1);
+  private connected = false;
 
   constructor() {
-    console.log('🔧 WebsocketService constructor ejecutado');
+    console.log('[WS] WebsocketService constructor');
     this.inicializarConexion();
   }
 
   private inicializarConexion() {
-    console.log('📡 Iniciando configuración de WebSocket...');
-    (window as any).global = window;
+    console.log('[WS] Iniciando conexion nativa STOMP...');
 
     this.stompClient = new Client({
-      webSocketFactory: () => new SockJS('http://localhost:8081/ws-emergencias'),
-      debug: (str) => console.log('STOMP Log:', str),
-      reconnectDelay: 5000,
+      // LA MAGIA ESTÁ AQUÍ: Usamos WebSocket Nativo puro, eliminando SockJS
+      brokerURL: 'ws://localhost:8081/ws-emergencias',
+      debug: (str) => {
+        if (str.includes('CONNECTED') || str.includes('ERROR') || str.includes('SUBSCRIBE')) {
+          console.log('[WS-STOMP]', str);
+        }
+      },
+      reconnectDelay: 3000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       onConnect: () => {
-        console.log('--- ¡CONECTADO CON SOCKJS EN TIEMPO REAL! ---');
+        this.connected = true;
+        console.log('[WS] CONECTADO EXITOSAMENTE a WebSocket Nativo');
 
-        // Topic: nuevos reportes ciudadanos
         this.stompClient.subscribe('/topic/nuevos-reportes', (message) => {
           if (message.body) {
-            console.log('--- LLEGÓ UN PAQUETE DESDE EL BACKEND ---', message.body);
             try {
-              const datos = JSON.parse(message.body);
+              let datos = JSON.parse(message.body);
+              if (typeof datos === 'string') {
+                datos = JSON.parse(datos);
+              }
               this.reportesSubject.next(datos);
             } catch (e) {
               this.reportesSubject.next(message.body);
@@ -42,10 +48,8 @@ export class WebsocketService {
           }
         });
 
-        // Topic: cambios de estado de unidades bomberiles (despacho, liberación, llegada)
         this.stompClient.subscribe('/topic/unidades-estado', (message) => {
           if (message.body) {
-            console.log('--- EVENTO DE UNIDADES RECIBIDO ---', message.body);
             try {
               const datos = JSON.parse(message.body);
               this.unidadesSubject.next(datos);
@@ -56,20 +60,30 @@ export class WebsocketService {
         });
       },
       onStompError: (frame) => {
-        console.error('Error en STOMP Broker: ', frame.headers['message']);
+        console.error('[WS] Error STOMP:', frame.headers['message']);
+        this.connected = false;
+      },
+      onDisconnect: () => {
+        console.warn('[WS] Desconectado de WebSocket');
+        this.connected = false;
+      },
+      onWebSocketClose: () => {
+        console.warn('[WS] WebSocket cerrado, reconectando...');
+        this.connected = false;
       }
     });
 
-    console.log('🚀 Activando conexión STOMP...');
     this.stompClient.activate();
   }
 
-  /** Observable de nuevos reportes ciudadanos en tiempo real */
+  public isConnected(): boolean {
+    return this.connected;
+  }
+
   public escucharNuevosReportes(): Observable<any> {
     return this.reportesSubject.asObservable();
   }
 
-  /** Observable de cambios de estado de unidades bomberiles */
   public escucharUnidadesEstado(): Observable<any> {
     return this.unidadesSubject.asObservable();
   }
