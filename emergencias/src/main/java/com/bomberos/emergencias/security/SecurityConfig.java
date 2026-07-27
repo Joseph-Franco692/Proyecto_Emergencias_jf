@@ -3,6 +3,7 @@ package com.bomberos.emergencias.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -32,16 +33,19 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/api/auth/**",       // registro, login-google, verify, session, logout
-                    "/api/mfa/**",        // login manual, setup 2fa, confirm, verify
+                    "/api/auth/**",
+                    "/api/mfa/**",
                     "/api/health",
-                    "/ws-emergencias/**", // WebSocket STOMP & SockJS handshake
+                    "/ws-emergencias/**",
                     "/ws-emergencias",
                     "/ws/**",
-                    "/uploads/**",        // evidencia multimedia
-                    "/api/reportes",      // creación de reportes ciudadanos
-                    "/api/reportes/**"
+                    "/uploads/**"
                 ).permitAll()
+                // El ciudadano puede crear el reporte sin iniciar sesión.
+                .requestMatchers(HttpMethod.POST, "/api/reportes").permitAll()
+                // Temporalmente público para el prototipo. Se sustituirá por
+                // autenticación de nodo al conectar físicamente el ESP32.
+                .requestMatchers(HttpMethod.POST, "/api/iot/telemetria").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

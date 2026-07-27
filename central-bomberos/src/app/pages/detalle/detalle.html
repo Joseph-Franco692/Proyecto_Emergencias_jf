@@ -103,6 +103,79 @@
         </div>
       </div>
 
+      <!-- Monitoreo IoT Post-Incendio & Habitabilidad -->
+      <div style="margin-top: 16px;">
+        <div class="section-title">
+          <span>📡 Monitoreo IoT Post-Incendio & Evaluación de Habitabilidad</span>
+        </div>
+
+        <div class="iot-card" [ngClass]="{'iot-active': iotConectado}">
+          <!-- Status Header -->
+          <div class="iot-header">
+            <div class="iot-status-badge" [ngClass]="iotConectado ? 'online' : 'offline'">
+              <span class="pulse-dot" *ngIf="iotConectado"></span>
+              {{ iotConectado ? 'NODO ESP32 TRANSMITIENDO EN VIVO' : 'NODO IOT STANDBY / DESCONECTADO' }}
+            </div>
+            <div class="iot-node-id">Nodo: {{ ultimaLecturaIot?.nodoId || 'ESP32-BOMBEROS-01' }}</div>
+          </div>
+
+          <!-- Live Gas Level Meter & Habitability Verdict -->
+          <div class="iot-body" *ngIf="ultimaLecturaIot">
+            <div class="iot-metric-box">
+              <div class="iot-label">Nivel de Humo / Gas (PPM)</div>
+              <div class="iot-value">{{ ultimaLecturaIot.nivelGas }}</div>
+              <div class="iot-progress-bar">
+                <div class="iot-progress-fill" [style.width.%]="(ultimaLecturaIot.nivelGas / 4095) * 100"
+                     [ngClass]="{
+                       'bg-green': ultimaLecturaIot.estadoAire === 'RESPIRABLE',
+                       'bg-yellow': ultimaLecturaIot.estadoAire === 'PRECAUCION',
+                       'bg-red': ultimaLecturaIot.estadoAire === 'CRITICO'
+                     }">
+                </div>
+              </div>
+            </div>
+
+            <div class="iot-verdict-box" [ngClass]="{
+              'verdict-safe': ultimaLecturaIot.evaluacionHabitabilidad === 'HABITABLE',
+              'verdict-warn': ultimaLecturaIot.evaluacionHabitabilidad === 'EVALUANDO',
+              'verdict-danger': ultimaLecturaIot.evaluacionHabitabilidad === 'NO_HABITABLE'
+            }">
+              <div class="verdict-icon">
+                {{ ultimaLecturaIot.evaluacionHabitabilidad === 'HABITABLE' ? '🟢' : (ultimaLecturaIot.evaluacionHabitabilidad === 'EVALUANDO' ? '🟡' : '🔴') }}
+              </div>
+              <div class="verdict-info">
+                <div class="verdict-title">
+                  {{ ultimaLecturaIot.evaluacionHabitabilidad === 'HABITABLE' ? 'LUGAR SEGURO / HABITABLE' : (ultimaLecturaIot.evaluacionHabitabilidad === 'EVALUANDO' ? 'EVALUACIÓN EN PROCESO' : '¡PELIGRO! EVACUAR LUGAR') }}
+                </div>
+                <div class="verdict-sub">
+                  Calidad del Aire: <strong>{{ ultimaLecturaIot.estadoAire }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fallback when no telemetry exists -->
+          <div *ngIf="!ultimaLecturaIot" class="iot-empty">
+            <span style="font-size: 24px; display: block; margin-bottom: 6px;">📟</span>
+            El nodo ESP32 aún no ha iniciado sesión para este incidente.
+            <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">Enciende el switch del detector en el sitio para iniciar la transmisión automática.</div>
+          </div>
+
+          <!-- Bitácora Log Table -->
+          <div *ngIf="bitacoraIot.length > 0" class="iot-bitacora-list">
+            <div class="bitacora-title">Bitácora de Eventos IoT ({{ bitacoraIot.length }} lecturas registradas)</div>
+            <div class="bitacora-scroll">
+              <div *ngFor="let item of bitacoraIot" class="bitacora-row">
+                <span class="bitacora-tag" [ngClass]="item.evento">{{ item.evento }}</span>
+                <span class="bitacora-time">{{ formatTime(item.fechaHora) }}</span>
+                <span class="bitacora-val">PPM: {{ item.nivelGas }}</span>
+                <span class="bitacora-stat">{{ item.estadoAire }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Dispatch button -->
       <div style="margin-top:4px">
         <div class="section-title"><span>Acción Operativa</span></div>

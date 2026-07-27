@@ -20,6 +20,12 @@
         <span class="u-unit-name">{{ unidadActual.nombre }}</span>
         <span class="u-unit-estado" [style.background]="getEstadoColor()">{{ getEstadoLabel() }}</span>
       </div>
+      <button *ngIf="unidadActual?.estado === 'DISPONIBLE'"
+              type="button"
+              (click)="cambiarUnidad()"
+              style="background:rgba(255,255,255,.08);color:#f1f5f9;border:1px solid rgba(255,255,255,.15);padding:6px 10px;border-radius:6px;cursor:pointer">
+        Cambiar unidad
+      </button>
       <a *ngIf="isAdmin()" routerLink="/" style="background: rgba(255,255,255,0.08); color: #f1f5f9; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">
         🖥️ Ir al Dashboard (Admin)
       </a>
@@ -102,7 +108,7 @@
         WebSocket activo · Esperando evento de despacho central
       </div>
 
-      <button class="u-back-btn" (click)="fase = 'seleccion'">← Cambiar unidad</button>
+      <button class="u-back-btn" (click)="cambiarUnidad()">← Cambiar unidad</button>
     </div>
   </div>
 
@@ -171,6 +177,59 @@
       </div>
       <div *ngIf="emergenciaActual?.celular" class="u-ec-tel">📞 {{ emergenciaActual?.celular }}</div>
     </div>
+
+    <!-- Evaluación IoT post-incendio: disponible únicamente al llegar al sitio -->
+    <section *ngIf="unidadActual?.estado === 'EN_SITIO'"
+             style="margin-top:16px;padding:18px;border:1px solid rgba(34,197,94,.35);border-radius:14px;background:rgba(15,23,42,.92)">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+        <div>
+          <div style="font-size:12px;color:#22c55e;font-weight:800;letter-spacing:1px">NODO TÁCTICO POST-INCENDIO</div>
+          <div style="font-size:14px;color:#cbd5e1;margin-top:4px">Las métricas se guardarán en el reporte #{{ emergenciaActual?.reporteId }}</div>
+        </div>
+        <span *ngIf="ultimaLecturaIot"
+              style="padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px"
+              [style.background]="ultimaLecturaIot.estadoAire === 'RESPIRABLE' ? 'rgba(34,197,94,.2)' : ultimaLecturaIot.estadoAire === 'CRITICO' ? 'rgba(239,68,68,.2)' : 'rgba(245,158,11,.2)'"
+              [style.color]="ultimaLecturaIot.estadoAire === 'RESPIRABLE' ? '#4ade80' : ultimaLecturaIot.estadoAire === 'CRITICO' ? '#f87171' : '#fbbf24'">
+          {{ ultimaLecturaIot.estadoAire }}
+        </span>
+      </div>
+
+      <div *ngIf="!sesionIot" style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <input [(ngModel)]="nodoIotId"
+               placeholder="NODO-ESP32-BOMBEROS-01"
+               style="flex:1;min-width:230px;background:#0f172a;color:#fff;border:1px solid #334155;border-radius:8px;padding:10px">
+        <button type="button"
+                [disabled]="iniciandoIot"
+                (click)="iniciarEvaluacionIot()"
+                style="background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 16px;font-weight:800;cursor:pointer">
+          {{ iniciandoIot ? 'VINCULANDO...' : 'INICIAR EVALUACIÓN IOT' }}
+        </button>
+      </div>
+
+      <div *ngIf="mensajeIot" style="margin-top:10px;color:#cbd5e1;font-size:13px">{{ mensajeIot }}</div>
+
+      <div *ngIf="ultimaLecturaIot"
+           style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:14px">
+        <div style="background:#0f172a;padding:12px;border-radius:9px">
+          <div style="font-size:11px;color:#94a3b8">NIVEL GAS</div>
+          <div style="font-size:22px;font-weight:900;color:white">{{ ultimaLecturaIot.nivelGas }}</div>
+        </div>
+        <div style="background:#0f172a;padding:12px;border-radius:9px">
+          <div style="font-size:11px;color:#94a3b8">HABITABILIDAD</div>
+          <div style="font-size:15px;font-weight:900;color:white">{{ ultimaLecturaIot.evaluacionHabitabilidad }}</div>
+        </div>
+        <div style="background:#0f172a;padding:12px;border-radius:9px">
+          <div style="font-size:11px;color:#94a3b8">LECTURAS RECIBIDAS</div>
+          <div style="font-size:22px;font-weight:900;color:white">{{ lecturasIot.length }}</div>
+        </div>
+        <div style="background:#0f172a;padding:12px;border-radius:9px">
+          <div style="font-size:11px;color:#94a3b8">UMBRALES ACTIVOS</div>
+          <div style="font-size:14px;font-weight:900;color:white">
+            {{ ultimaLecturaIot.umbralAdvertencia }} / {{ ultimaLecturaIot.umbralPeligro }}
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- ─── ACCIONES ─── -->
     <div class="u-actions">

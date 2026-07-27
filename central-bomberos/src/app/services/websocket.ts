@@ -9,6 +9,7 @@ export class WebsocketService {
   private stompClient!: Client;
   private reportesSubject: ReplaySubject<any> = new ReplaySubject<any>(1);
   private unidadesSubject: ReplaySubject<any> = new ReplaySubject<any>(1);
+  private iotSubject: ReplaySubject<any> = new ReplaySubject<any>(1);
   private connected = false;
 
   constructor() {
@@ -58,6 +59,17 @@ export class WebsocketService {
             }
           }
         });
+
+        this.stompClient.subscribe('/topic/iot-telemetria', (message) => {
+          if (message.body) {
+            try {
+              const datos = JSON.parse(message.body);
+              this.iotSubject.next(datos);
+            } catch (e) {
+              this.iotSubject.next(message.body);
+            }
+          }
+        });
       },
       onStompError: (frame) => {
         console.error('[WS] Error STOMP:', frame.headers['message']);
@@ -86,5 +98,9 @@ export class WebsocketService {
 
   public escucharUnidadesEstado(): Observable<any> {
     return this.unidadesSubject.asObservable();
+  }
+
+  public escucharTelemetriaIot(): Observable<any> {
+    return this.iotSubject.asObservable();
   }
 }

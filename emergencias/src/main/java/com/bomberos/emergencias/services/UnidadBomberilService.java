@@ -3,9 +3,13 @@ package com.bomberos.emergencias.services;
 import com.bomberos.emergencias.models.BitacoraUnidad;
 import com.bomberos.emergencias.models.EstadoUnidad;
 import com.bomberos.emergencias.models.ReporteCiudadano;
+import com.bomberos.emergencias.models.LecturaIot;
+import com.bomberos.emergencias.models.SesionIot;
 import com.bomberos.emergencias.models.UnidadBomberil;
 import com.bomberos.emergencias.repositories.BitacoraUnidadRepository;
+import com.bomberos.emergencias.repositories.LecturaIotRepository;
 import com.bomberos.emergencias.repositories.ReporteCiudadanoRepository;
+import com.bomberos.emergencias.repositories.SesionIotRepository;
 import com.bomberos.emergencias.repositories.UnidadBomberilRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -16,12 +20,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
 public class UnidadBomberilService {
+
+    private static final long SEGUNDOS_PRESENCIA_OPERADOR = 45;
 
     @Autowired
     private UnidadBomberilRepository unidadRepository;
@@ -33,13 +41,23 @@ public class UnidadBomberilService {
     private ReporteCiudadanoRepository reporteRepository;
 
     @Autowired
+    private SesionIotRepository sesionIotRepository;
+
+    @Autowired
+    private LecturaIotRepository lecturaIotRepository;
+
+    @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
     /**
      * Devuelve todas las unidades en estado DISPONIBLE para poblar el modal de despacho.
      */
     public List<UnidadBomberil> obtenerUnidadesDisponibles() {
-        List<UnidadBomberil> unidades = unidadRepository.findByEstado(EstadoUnidad.DISPONIBLE);
+        List<UnidadBomberil> unidades =
+                unidadRepository.findByEstadoAndOperadorUltimoHeartbeatAfter(
+                        EstadoUnidad.DISPONIBLE,
+                        LocalDateTime.now().minusSeconds(SEGUNDOS_PRESENCIA_OPERADOR)
+                );
         // Desvinculamos el reporte asignado para evitar serialización circular
         unidades.forEach(u -> u.setReporteAsignado(null));
         return unidades;
@@ -52,6 +70,63 @@ public class UnidadBomberilService {
         List<UnidadBomberil> unidades = unidadRepository.findAll();
         unidades.forEach(u -> u.setReporteAsignado(null));
         return unidades;
+    }
+
+    public UnidadBomberil obtenerPorId(Long id) {
+        return unidadRepository.findById(id).orElse(null);
+    }
+
+    @Transactional
+    public UnidadBomberil activarOperador(Long unidadId, String email, String nombre) {
+        UnidadBomberil unidad = unidadRepository.findById(unidadId)
+                .orElseThrow(() -> new RuntimeException("Unidad no encontrada con ID: " + unidadId));
+
+        boolean otroOperadorActivo = unidad.getOperadorEmail() != null
+                && !email.equalsIgnoreCase(unidad.getOperadorEmail())
+                && presenciaOperadorVigente(unidad);
+        if (otroOperadorActivo) {
+            throw new RuntimeException("La unidad ya está ocupada por otro operador conectado.");
+        }
+        if (unidad.getEstado() != EstadoUnidad.DISPONIBLE
+                && !email.equalsIgnoreCase(unidad.getOperadorEmail())) {
+            throw new RuntimeException("La unidad ya está atendiendo una emergencia.");
+        }
+
+        unidad.setOperadorEmail(email);
+        unidad.setOperadorNombre(nombre);
+        unidad.setOperadorUltimoHeartbeat(LocalDateTime.now());
+        UnidadBomberil guardada = unidadRepository.save(unidad);
+        difundirActualizacionGeneral();
+        return guardada;
+    }
+
+    @Transactional
+    public UnidadBomberil registrarHeartbeat(Long unidadId, String email) {
+        UnidadBomberil unidad = unidadRepository.findById(unidadId)
+                .orElseThrow(() -> new RuntimeException("Unidad no encontrada con ID: " + unidadId));
+        if (unidad.getOperadorEmail() == null
+                || !email.equalsIgnoreCase(unidad.getOperadorEmail())) {
+            throw new RuntimeException("El operador no está registrado en esta unidad.");
+        }
+        unidad.setOperadorUltimoHeartbeat(LocalDateTime.now());
+        return unidadRepository.save(unidad);
+    }
+
+    @Transactional
+    public void desactivarOperador(Long unidadId, String email) {
+        UnidadBomberil unidad = unidadRepository.findById(unidadId)
+                .orElseThrow(() -> new RuntimeException("Unidad no encontrada con ID: " + unidadId));
+        if (unidad.getEstado() != EstadoUnidad.DISPONIBLE) {
+            throw new RuntimeException("No se puede abandonar una unidad durante una emergencia activa.");
+        }
+        if (unidad.getOperadorEmail() != null
+                && email.equalsIgnoreCase(unidad.getOperadorEmail())) {
+            unidad.setOperadorEmail(null);
+            unidad.setOperadorNombre(null);
+            unidad.setOperadorUltimoHeartbeat(null);
+            unidadRepository.save(unidad);
+            difundirActualizacionGeneral();
+        }
     }
 
     /**
@@ -74,6 +149,11 @@ public class UnidadBomberilService {
             }
 
             // Transición de estados (ACID garantizada por @Transactional)
+            if (!presenciaOperadorVigente(unidad)) {
+                throw new RuntimeException("La unidad " + unidad.getNombre()
+                        + " no tiene un operador conectado en espera.");
+            }
+
             unidad.setEstado(EstadoUnidad.EN_RUTA);
             unidad.setReporteAsignado(reporte);
             unidadRepository.save(unidad);
@@ -120,6 +200,7 @@ public class UnidadBomberilService {
 
         ReporteCiudadano reporteAnterior = unidad.getReporteAsignado();
         Long reporteId = reporteAnterior != null ? reporteAnterior.getId() : null;
+        cerrarSesionIotActiva(reporteId, unidadId);
 
         // Crear la bitácora final
         BitacoraUnidad bitacora = new BitacoraUnidad();
@@ -127,7 +208,7 @@ public class UnidadBomberilService {
         bitacora.setReporte(reporteAnterior);
         bitacora.setOperador(operador);
         bitacora.setPersonalInvolucrado(personal);
-        bitacora.setNovedades(novedades);
+        bitacora.setNovedades(novedades + construirResumenIot(reporteId));
         bitacora.setFechaHora(java.time.LocalDateTime.now());
         BitacoraUnidad bitacoraGuardada = bitacoraRepository.save(bitacora);
 
@@ -179,6 +260,57 @@ public class UnidadBomberilService {
         respuesta.put("reporteAnteriorId", reporteId);
         respuesta.put("reporteCerrado", reporteCerrado);
         return respuesta;
+    }
+
+    private String construirResumenIot(Long reporteId) {
+        if (reporteId == null) return "";
+
+        SesionIot sesion = sesionIotRepository
+                .findFirstByReporteIdOrderByFechaInicioDesc(reporteId)
+                .orElse(null);
+        if (sesion == null) return "";
+
+        LecturaIot primera = lecturaIotRepository
+                .findFirstBySesionIdOrderByFechaHoraAsc(sesion.getId())
+                .orElse(null);
+        LecturaIot ultima = lecturaIotRepository
+                .findFirstBySesionIdOrderByFechaHoraDesc(sesion.getId())
+                .orElse(null);
+        if (primera == null || ultima == null) return "";
+
+        return "\n\nEvaluación IoT post-incendio"
+                + " · Nodo: " + sesion.getNodoId()
+                + " · Sesión: " + sesion.getId()
+                + "\nPrimera toma: " + describirLectura(primera)
+                + "\nÚltima toma: " + describirLectura(ultima);
+    }
+
+    private void cerrarSesionIotActiva(Long reporteId, Long unidadId) {
+        if (reporteId == null) return;
+        sesionIotRepository
+                .findFirstByReporteIdAndEstadoOrderByFechaInicioDesc(reporteId, "ACTIVA")
+                .filter(sesion -> unidadId.equals(sesion.getUnidadId()))
+                .ifPresent(sesion -> {
+                    LecturaIot ultima = lecturaIotRepository
+                            .findFirstBySesionIdOrderByFechaHoraDesc(sesion.getId())
+                            .orElse(null);
+                    sesion.setEstado("FINALIZADA");
+                    sesion.setFechaFin(LocalDateTime.now());
+                    sesion.setResultadoFinal(ultima != null
+                            ? ultima.getEvaluacionHabitabilidad()
+                            : "FINALIZADA_SIN_LECTURAS");
+                    sesionIotRepository.save(sesion);
+                });
+    }
+
+    private String describirLectura(LecturaIot lectura) {
+        String hora = lectura.getFechaHora() != null
+                ? lectura.getFechaHora().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))
+                : "sin hora";
+        return "gas " + lectura.getNivelGas()
+                + " · aire " + lectura.getEstadoAire()
+                + " · resultado " + lectura.getEvaluacionHabitabilidad()
+                + " · " + hora;
     }
 
     /**
@@ -292,5 +424,13 @@ public class UnidadBomberilService {
         Map<String, Object> notificacion = new HashMap<>();
         notificacion.put("tipo", "ACTUALIZACION_INVENTARIO");
         messagingTemplate.convertAndSend("/topic/unidades-estado", (Object) notificacion);
+    }
+
+    private boolean presenciaOperadorVigente(UnidadBomberil unidad) {
+        return unidad.getOperadorEmail() != null
+                && unidad.getOperadorUltimoHeartbeat() != null
+                && unidad.getOperadorUltimoHeartbeat().isAfter(
+                        LocalDateTime.now().minusSeconds(SEGUNDOS_PRESENCIA_OPERADOR)
+                );
     }
 }

@@ -57,13 +57,25 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
 
   private readonly API_URL = 'http://localhost:8081/api/reportes';
   private readonly UNIDADES_URL = 'http://localhost:8081/api/unidades';
+  private readonly IOT_URL = 'http://localhost:8081/api/iot';
+  private readonly UNIDAD_ACTIVA_KEY = 'bomberos_unidad_activa';
   private wsSub!: Subscription;
+  private iotSub!: Subscription;
   private timerInterval: any;
+  private heartbeatInterval: any;
   private timerSeconds: number = 0;
   private recalcInterval: any;
 
   public currentUser$: any;
   public currentUser: AppUser | null = null;
+
+  // ─── EVALUACIÓN POST-INCENDIO IOT ─────────────────────────────────────────
+  public nodoIotId: string = 'NODO-ESP32-BOMBEROS-01';
+  public sesionIot: any = null;
+  public ultimaLecturaIot: any = null;
+  public lecturasIot: any[] = [];
+  public iniciandoIot: boolean = false;
+  public mensajeIot: string = '';
 
   constructor(
     private http: HttpClient,
@@ -83,12 +95,16 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.cargarUnidades();
     this.iniciarEscuchaWebSocket();
+    this.iniciarEscuchaIot();
     this.iniciarGPS();
+    this.restaurarUnidadActiva();
   }
 
   ngOnDestroy(): void {
     if (this.wsSub) this.wsSub.unsubscribe();
+    if (this.iotSub) this.iotSub.unsubscribe();
     if (this.timerInterval) clearInterval(this.timerInterval);
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
     if (this.recalcInterval) clearInterval(this.recalcInterval);
     if (this.watchId !== null) navigator.geolocation.clearWatch(this.watchId);
     if (this.mapa) this.mapa.remove();
@@ -124,7 +140,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
 
   public intentarSeleccionarUnidad(unidad: any): void {
     this.unidadASeleccionar = unidad;
-    this.formOperador = '';
+    this.formOperador = this.currentUser?.name || '';
     this.showOperadorModal = true;
     this.cdr.detectChanges();
   }
@@ -135,10 +151,124 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
        return;
     }
     
-    this.unidadASeleccionar.operador = this.formOperador.trim();
-    this.unidadActual = this.unidadASeleccionar;
-    this.fase = 'espera';
-    this.showOperadorModal = false;
+    const unidad = { ...this.unidadASeleccionar, operador: this.formOperador.trim() };
+    this.http.put<any>(`${this.UNIDADES_URL}/${unidad.id}/operador/activar`, {}).subscribe({
+      next: () => {
+        this.unidadActual = unidad;
+        this.guardarUnidadActiva();
+        this.showOperadorModal = false;
+        this.iniciarHeartbeatOperador();
+        this.verificarEmergenciaAsignadaAUnidad(unidad.id);
+        this.cdr.detectChanges();
+      },
+      error: err => alert(err.error?.error || err.error?.message || 'No se pudo ocupar la unidad.')
+    });
+  }
+
+  private verificarEmergenciaAsignadaAUnidad(unidadId: number): void {
+    this.http.get<any>(`${this.UNIDADES_URL}/${unidadId}`).subscribe({
+      next: (unidadBD) => {
+        this.ngZone.run(() => {
+          if (unidadBD && unidadBD.reporteAsignado) {
+            console.log('🚨 LA UNIDAD YA TIENE EMERGENCIA ASIGNADA EN BD:', unidadBD.reporteAsignado);
+            const rep = unidadBD.reporteAsignado;
+            this.emergenciaActual = {
+              reporteId: rep.id,
+              latitud: Number(rep.latitud),
+              longitud: Number(rep.longitud),
+              descripcion: rep.descripcion,
+              celular: rep.celularReportero || ''
+            };
+            this.unidadActual = { ...this.unidadActual, estado: 'EN_RUTA' };
+            this.guardarUnidadActiva();
+            this.fase = 'ruta';
+            this.iniciarTimerRuta();
+            setTimeout(() => {
+              this.inicializarMapa();
+              setTimeout(() => this.calcularRutaOSRM(), 400);
+            }, 250);
+          } else {
+            this.unidadActual = { ...this.unidadActual, ...unidadBD };
+            this.guardarUnidadActiva();
+            this.fase = 'espera';
+          }
+          this.cdr.detectChanges();
+        });
+      },
+      error: () => {
+        this.fase = 'espera';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private guardarUnidadActiva(): void {
+    if (!this.unidadActual) return;
+    localStorage.setItem(this.UNIDAD_ACTIVA_KEY, JSON.stringify({
+      id: this.unidadActual.id,
+      nombre: this.unidadActual.nombre,
+      tipo: this.unidadActual.tipo,
+      estado: this.unidadActual.estado,
+      operador: this.unidadActual.operador || this.currentUser?.name || ''
+    }));
+  }
+
+  private restaurarUnidadActiva(): void {
+    const guardada = localStorage.getItem(this.UNIDAD_ACTIVA_KEY);
+    if (!guardada) return;
+
+    try {
+      const unidad = JSON.parse(guardada);
+      if (!unidad?.id) return;
+      this.unidadActual = unidad;
+      this.fase = 'espera';
+      this.http.put<any>(`${this.UNIDADES_URL}/${unidad.id}/operador/activar`, {}).subscribe({
+        next: () => {
+          this.iniciarHeartbeatOperador();
+          this.verificarEmergenciaAsignadaAUnidad(unidad.id);
+        },
+        error: () => {
+          localStorage.removeItem(this.UNIDAD_ACTIVA_KEY);
+          this.unidadActual = null;
+          this.fase = 'seleccion';
+          this.cargarUnidades();
+          this.cdr.detectChanges();
+        }
+      });
+    } catch {
+      localStorage.removeItem(this.UNIDAD_ACTIVA_KEY);
+    }
+  }
+
+  public cambiarUnidad(): void {
+    if (this.unidadActual?.estado !== 'DISPONIBLE') return;
+    const unidadId = this.unidadActual.id;
+    this.http.put<any>(`${this.UNIDADES_URL}/${unidadId}/operador/desactivar`, {}).subscribe({
+      next: () => this.limpiarUnidadLocal(),
+      error: err => alert(err.error?.error || err.error?.message || 'No se pudo liberar la unidad.')
+    });
+  }
+
+  private iniciarHeartbeatOperador(): void {
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+    const enviar = () => {
+      if (!this.unidadActual?.id) return;
+      this.http.put(
+        `${this.UNIDADES_URL}/${this.unidadActual.id}/operador/heartbeat`,
+        {}
+      ).subscribe({ error: err => console.warn('Heartbeat de operador rechazado:', err) });
+    };
+    enviar();
+    this.heartbeatInterval = setInterval(enviar, 15000);
+  }
+
+  private limpiarUnidadLocal(): void {
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+    localStorage.removeItem(this.UNIDAD_ACTIVA_KEY);
+    this.unidadActual = null;
+    this.emergenciaActual = null;
+    this.fase = 'seleccion';
+    this.cargarUnidades();
     this.cdr.detectChanges();
   }
 
@@ -218,22 +348,90 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  private iniciarEscuchaIot(): void {
+    this.iotSub = this.wsService.escucharTelemetriaIot().subscribe({
+      next: (lectura) => {
+        if (!lectura || !this.emergenciaActual) return;
+        if (String(lectura.reporteId) !== String(this.emergenciaActual.reporteId)) return;
+        this.ngZone.run(() => {
+          this.ultimaLecturaIot = lectura;
+          this.lecturasIot = [
+            lectura,
+            ...this.lecturasIot.filter(item => item.id !== lectura.id)
+          ].slice(0, 20);
+          if (lectura.evento === 'FIN_SESION') {
+            this.mensajeIot = `Evaluación finalizada: ${lectura.evaluacionHabitabilidad}`;
+          }
+          this.cdr.detectChanges();
+        });
+      }
+    });
+  }
+
+  public iniciarEvaluacionIot(): void {
+    if (!this.unidadActual || !this.emergenciaActual || !this.nodoIotId.trim()) return;
+    this.iniciandoIot = true;
+    this.mensajeIot = '';
+    this.http.post<any>(`${this.IOT_URL}/sesiones/iniciar`, {
+      unidadId: this.unidadActual.id,
+      nodoId: this.nodoIotId.trim().toUpperCase()
+    }).subscribe({
+      next: (sesion) => {
+        this.ngZone.run(() => {
+          this.sesionIot = sesion;
+          this.iniciandoIot = false;
+          this.mensajeIot = sesion.mensaje;
+          this.cargarLecturasIot();
+          this.cdr.detectChanges();
+        });
+      },
+      error: (err) => {
+        this.ngZone.run(() => {
+          this.iniciandoIot = false;
+          this.mensajeIot = 'Error: ' + (err.error?.error || err.message);
+          this.cdr.detectChanges();
+        });
+      }
+    });
+  }
+
+  private cargarLecturasIot(): void {
+    if (!this.emergenciaActual?.reporteId) return;
+    this.http.get<any[]>(
+      `${this.IOT_URL}/reportes/${this.emergenciaActual.reporteId}/bitacora`
+    ).subscribe({
+      next: lecturas => {
+        this.lecturasIot = lecturas.slice(0, 20);
+        this.ultimaLecturaIot = lecturas[0] || null;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
   private procesarEventoDespacho(evento: any): void {
     if (!this.unidadActual) return;
-    const mismaUnidad = evento.unidades?.find(
-      (u: any) => String(u.id) === String(this.unidadActual.id)
-    );
+    const mismaUnidad = evento.unidades?.find((u: any) => {
+      const idMatch = String(u.id) === String(this.unidadActual.id);
+      const nameMatch = u.nombre && this.unidadActual.nombre &&
+        (u.nombre.toLowerCase().includes(this.unidadActual.nombre.toLowerCase()) ||
+         this.unidadActual.nombre.toLowerCase().includes(u.nombre.toLowerCase()));
+      return idMatch || nameMatch;
+    });
+
     if (!mismaUnidad) return;
+
+    console.log('🚨 DESPACHO RECIBIDO EN TIEMPO REAL PARA ESTA UNIDAD:', evento);
 
     this.emergenciaActual = {
       reporteId: evento.reporteId,
-      latitud: evento.latitud,
-      longitud: evento.longitud,
+      latitud: Number(evento.latitud),
+      longitud: Number(evento.longitud),
       descripcion: evento.descripcion,
-      celular: evento.celularReportero
+      celular: evento.celularReportero || ''
     };
 
     this.unidadActual = { ...this.unidadActual, estado: 'EN_RUTA' };
+    this.guardarUnidadActiva();
     this.fase = 'ruta';
     this.iniciarTimerRuta();
     this.cdr.detectChanges();
@@ -263,6 +461,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     }
     if (this.unidadActual) {
       this.unidadActual = { ...this.unidadActual, estado: 'DISPONIBLE' };
+      this.guardarUnidadActiva();
     }
     this.cdr.detectChanges();
   }
@@ -564,6 +763,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
       next: () => {
         this.ngZone.run(() => {
           this.unidadActual = { ...this.unidadActual, estado: 'EN_SITIO' };
+          this.guardarUnidadActiva();
           this.instruccionActual = '✅ Llegaste al destino. Procede con el protocolo de emergencia.';
           this.instruccionIcono = '✅';
           if (this.recalcInterval) clearInterval(this.recalcInterval);
@@ -638,10 +838,19 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
   }
 
   public logout(): void {
-    this.authService.logout().subscribe({
-      next: () => this.router.navigate(['/login']),
-      error: () => this.router.navigate(['/login'])
-    });
+    const cerrarSesion = () => this.authService.logout().subscribe({
+        next: () => this.router.navigate(['/login']),
+        error: () => this.router.navigate(['/login'])
+      });
+
+    if (this.unidadActual?.id && this.unidadActual?.estado === 'DISPONIBLE') {
+      this.http.put(
+        `${this.UNIDADES_URL}/${this.unidadActual.id}/operador/desactivar`,
+        {}
+      ).subscribe({ next: cerrarSesion, error: cerrarSesion });
+    } else {
+      cerrarSesion();
+    }
   }
 
   public isAdmin(): boolean {

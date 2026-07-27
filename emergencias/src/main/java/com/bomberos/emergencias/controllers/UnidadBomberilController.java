@@ -1,10 +1,12 @@
 package com.bomberos.emergencias.controllers;
 
 import com.bomberos.emergencias.models.UnidadBomberil;
+import com.bomberos.emergencias.models.Usuario;
 import com.bomberos.emergencias.services.UnidadBomberilService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 import java.util.Map;
@@ -23,6 +25,42 @@ public class UnidadBomberilController {
     @GetMapping
     public ResponseEntity<List<UnidadBomberil>> listarTodas() {
         return ResponseEntity.ok(unidadService.obtenerTodasLasUnidades());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UnidadBomberil> obtenerPorId(@PathVariable Long id) {
+        UnidadBomberil u = unidadService.obtenerPorId(id);
+        if (u == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(u);
+    }
+
+    @PutMapping("/{id}/operador/activar")
+    public ResponseEntity<?> activarOperador(@PathVariable Long id, Authentication auth) {
+        String email = auth.getName();
+        String nombre = auth.getPrincipal() instanceof Usuario usuario
+                ? usuario.getName()
+                : email;
+        UnidadBomberil unidad = unidadService.activarOperador(id, email, nombre);
+        return ResponseEntity.ok(Map.of(
+                "unidadId", unidad.getId(),
+                "operador", unidad.getOperadorNombre(),
+                "estado", unidad.getEstado().name()
+        ));
+    }
+
+    @PutMapping("/{id}/operador/heartbeat")
+    public ResponseEntity<?> heartbeatOperador(@PathVariable Long id, Authentication auth) {
+        UnidadBomberil unidad = unidadService.registrarHeartbeat(id, auth.getName());
+        return ResponseEntity.ok(Map.of(
+                "unidadId", unidad.getId(),
+                "activo", true
+        ));
+    }
+
+    @PutMapping("/{id}/operador/desactivar")
+    public ResponseEntity<?> desactivarOperador(@PathVariable Long id, Authentication auth) {
+        unidadService.desactivarOperador(id, auth.getName());
+        return ResponseEntity.ok(Map.of("unidadId", id, "activo", false));
     }
 
     /**

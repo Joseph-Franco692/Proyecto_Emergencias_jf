@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -108,12 +110,17 @@ public class ReporteController {
     public ResponseEntity<Map<String, Object>> despacharUnidades(
             @PathVariable Long id,
             @RequestBody List<Long> unidadIds,
-            jakarta.servlet.http.HttpServletRequest req) {
-        
-        String role = (String) req.getAttribute("userRole");
-        if (!"CENTRAL".equals(role)) {
+            Authentication authentication) {
+
+        boolean esAdmin = authentication != null
+                && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .anyMatch("ROLE_ADMIN"::equals);
+
+        if (!esAdmin) {
             Map<String, Object> error = new HashMap<>();
-            error.put("error", "Acceso denegado: Solo el rol CENTRAL puede despachar unidades.");
+            error.put("error", "Acceso denegado: Solo un administrador puede despachar unidades.");
             return ResponseEntity.status(403).body(error);
         }
 

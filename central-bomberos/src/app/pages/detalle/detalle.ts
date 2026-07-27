@@ -40,9 +40,16 @@ export class DetalleComponent implements OnInit, OnDestroy {
   public despachoMensaje: string = '';
   public unidadesDespachadas: any[] = [];
 
+  // IoT Telemetry & Post-fire habitability evaluation
+  public bitacoraIot: any[] = [];
+  public ultimaLecturaIot: any = null;
+  public iotConectado: boolean = false;
+
   private API_URL = 'http://localhost:8081/api/reportes';
   private UNIDADES_URL = 'http://localhost:8081/api/unidades';
+  private IOT_URL = 'http://localhost:8081/api/iot';
   private wsSub!: Subscription;
+  private iotSub!: Subscription;
 
   constructor(
     private route: ActivatedRoute,
@@ -65,6 +72,7 @@ export class DetalleComponent implements OnInit, OnDestroy {
           this.errorMessage = null;
           this.cdr.detectChanges();
           this.cargarEvidencias();
+          this.cargarBitacoraIot();
         },
         error: (err) => {
           console.error('Error al cargar el reporte', err);
@@ -87,8 +95,26 @@ export class DetalleComponent implements OnInit, OnDestroy {
             if (evento.reporteCerrado) {
               this.despachoMensaje = '✓ Todas las unidades se retiraron. Incidente cerrado.';
             }
+          } else if (evento?.tipo === 'ACTUALIZACION_INVENTARIO' && this.mostrarModalDespacho) {
+            this.actualizarUnidadesDisponibles();
           }
           this.cdr.detectChanges();
+        });
+      }
+    });
+
+    // Escuchar telemetría IoT en tiempo real desde el nodo ESP32
+    this.iotSub = this.wsService.escucharTelemetriaIot().subscribe({
+      next: (telemetria) => {
+        if (!telemetria) return;
+        this.ngZone.run(() => {
+          if (!this.idIncidente || String(telemetria.reporteId) === String(this.idIncidente) || telemetria.reporteId === 1) {
+            console.log('📡 [IOT TELEMETRIA EN TIEMPO REAL RECIBIDA]:', telemetria);
+            this.ultimaLecturaIot = telemetria;
+            this.iotConectado = telemetria.evento !== 'FIN_SESION';
+            this.bitacoraIot = [telemetria, ...this.bitacoraIot];
+            this.cdr.detectChanges();
+          }
         });
       }
     });
@@ -96,6 +122,22 @@ export class DetalleComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.wsSub) this.wsSub.unsubscribe();
+    if (this.iotSub) this.iotSub.unsubscribe();
+  }
+
+  private cargarBitacoraIot(): void {
+    if (!this.idIncidente) return;
+    this.http.get<any[]>(`${this.IOT_URL}/reportes/${this.idIncidente}/bitacora`).subscribe({
+      next: (bitacora) => {
+        this.bitacoraIot = bitacora;
+        if (bitacora && bitacora.length > 0) {
+          this.ultimaLecturaIot = bitacora[0];
+          this.iotConectado = bitacora[0].evento !== 'FIN_SESION';
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Error cargando bitácora IoT:', err)
+    });
   }
 
   private cargarEvidencias(): void {
@@ -139,6 +181,19 @@ export class DetalleComponent implements OnInit, OnDestroy {
   public cerrarModalDespacho(): void {
     this.mostrarModalDespacho = false;
     this.cdr.detectChanges();
+  }
+
+  private actualizarUnidadesDisponibles(): void {
+    this.http.get<any[]>(`${this.UNIDADES_URL}/disponibles`).subscribe({
+      next: unidades => {
+        this.unidadesDisponibles = unidades;
+        const idsVigentes = new Set(unidades.map(u => u.id));
+        this.unidadesSeleccionadas.forEach(id => {
+          if (!idsVigentes.has(id)) this.unidadesSeleccionadas.delete(id);
+        });
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   public toggleUnidad(id: number): void {

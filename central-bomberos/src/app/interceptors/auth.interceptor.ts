@@ -11,7 +11,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = authService.getToken();
 
   const handleAuthError = (error: HttpErrorResponse) => {
-    if (error.status === 401 || error.status === 403) {
+    // Un 403 significa que la sesión es válida pero el usuario no tiene permiso.
+    // Solo un 401 debe invalidar la sesión local.
+    if (error.status === 401) {
       authService.logout().subscribe();
       router.navigate(['/login']);
     }

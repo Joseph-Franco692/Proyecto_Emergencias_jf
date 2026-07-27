@@ -3,6 +3,7 @@ package com.bomberos.emergencias.models;
 import jakarta.persistence.*;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.time.LocalDateTime;
 
 @Data
 @Entity
@@ -29,4 +30,13 @@ public class UnidadBomberil {
     @JoinColumn(name = "reporte_asignado_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "incidente"})
     private ReporteCiudadano reporteAsignado;
+
+    @Column(name = "operador_email", length = 150)
+    private String operadorEmail;
+
+    @Column(name = "operador_nombre", length = 150)
+    private String operadorNombre;
+
+    @Column(name = "operador_ultimo_heartbeat")
+    private LocalDateTime operadorUltimoHeartbeat;
 }
