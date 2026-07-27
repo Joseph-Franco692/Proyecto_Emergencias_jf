@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { WebsocketService } from '../../services/websocket';
 import { Subscription } from 'rxjs';
+import { retry, timeout } from 'rxjs/operators';
 
 @Component({
   selector: 'app-detalle',
@@ -65,7 +66,10 @@ export class DetalleComponent implements OnInit, OnDestroy {
 
     if (this.idIncidente) {
       this.isDispatched = localStorage.getItem('dispatched_report_' + this.idIncidente) === 'true';
-      this.http.get<any>(`${this.API_URL}/${this.idIncidente}`).subscribe({
+      this.http.get<any>(`${this.API_URL}/${this.idIncidente}`).pipe(
+        timeout(10000),
+        retry({ count: 2, delay: 500 })
+      ).subscribe({
         next: (datos) => {
           this.classif = this.clasificarReporte(datos.descripcion);
           this.reporteSeleccionado = datos;
@@ -76,7 +80,11 @@ export class DetalleComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           console.error('Error al cargar el reporte', err);
-          this.errorMessage = 'No se pudo obtener la información de la base de datos. Asegúrate de que el backend Spring Boot esté corriendo en el puerto 8081.';
+          this.errorMessage = err.status === 403
+            ? 'Tu sesión no tiene autorización para consultar este incidente. Vuelve a iniciar sesión.'
+            : err.status === 404
+              ? 'El incidente solicitado ya no está disponible.'
+              : 'No fue posible cargar el incidente después de varios intentos. Verifica la conexión con el servidor.';
           this.cdr.detectChanges();
         }
       });

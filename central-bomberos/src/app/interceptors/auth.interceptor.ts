@@ -9,10 +9,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const router = inject(Router);
   const token = authService.getToken();
+  const isCitizenReportCreation =
+    req.method === 'POST' &&
+    (req.url.endsWith('/api/reportes') || req.url.endsWith('/api/reportes/'));
   const isPublicRequest =
     req.url.includes('/api/premium/') ||
     req.url.endsWith('/api/premium') ||
-    req.url.includes('/api/reportes');
+    isCitizenReportCreation;
 
   const handleAuthError = (error: HttpErrorResponse) => {
     // Un 403 significa que la sesión es válida pero el usuario no tiene permiso.

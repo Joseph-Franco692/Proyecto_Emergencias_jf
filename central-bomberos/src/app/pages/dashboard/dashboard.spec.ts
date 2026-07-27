@@ -1,19 +1,41 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { NEVER } from 'rxjs';
 
-import { Dashboard } from './dashboard';
+import { DashboardComponent } from './dashboard';
+import { WebsocketService } from '../../services/websocket';
+import { AuthService } from '../../services/auth.service';
 
 describe('Dashboard', () => {
-  let component: Dashboard;
-  let fixture: ComponentFixture<Dashboard>;
+  let component: DashboardComponent;
+  let fixture: ComponentFixture<DashboardComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Dashboard],
+      imports: [DashboardComponent],
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        {
+          provide: WebsocketService,
+          useValue: {
+            escucharNuevosReportes: () => NEVER,
+            escucharUnidadesEstado: () => NEVER
+          }
+        },
+        {
+          provide: AuthService,
+          useValue: {
+            getUser$: () => NEVER,
+            getUser: () => null
+          }
+        }
+      ]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(Dashboard);
+    fixture = TestBed.createComponent(DashboardComponent);
     component = fixture.componentInstance;
-    await fixture.whenStable();
   });
 
   it('should create', () => {

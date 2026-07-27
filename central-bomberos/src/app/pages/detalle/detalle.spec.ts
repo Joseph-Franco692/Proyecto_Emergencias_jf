@@ -1,19 +1,33 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { NEVER } from 'rxjs';
 
-import { Detalle } from './detalle';
+import { DetalleComponent } from './detalle';
+import { WebsocketService } from '../../services/websocket';
 
 describe('Detalle', () => {
-  let component: Detalle;
-  let fixture: ComponentFixture<Detalle>;
+  let component: DetalleComponent;
+  let fixture: ComponentFixture<DetalleComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Detalle],
+      imports: [DetalleComponent],
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        {
+          provide: WebsocketService,
+          useValue: {
+            escucharNuevosReportes: () => NEVER,
+            escucharUnidadesEstado: () => NEVER
+          }
+        }
+      ]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(Detalle);
+    fixture = TestBed.createComponent(DetalleComponent);
     component = fixture.componentInstance;
-    await fixture.whenStable();
   });
 
   it('should create', () => {

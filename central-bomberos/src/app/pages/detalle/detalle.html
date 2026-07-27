@@ -24,7 +24,7 @@
         <div class="sev-icon">{{ classif.icon }}</div>
         <div>
           <div class="sev-title" [ngClass]="classif.severity">{{ classif.title }} — NIVEL {{ getSeverityLevel() }}</div>
-          <div class="sev-sub">Coordenadas del Suceso, Santo Domingo · Captura Automática Ciudadana</div>
+          <div class="sev-sub">Ubicación del suceso · Registro ciudadano verificado</div>
         </div>
         <div class="sev-right">
           <div class="sev-badge" [ngClass]="classif.severity">{{ classif.badge }}</div>
@@ -81,7 +81,7 @@
             </div>
           </div>
           <div class="meta-card">
-            <div class="meta-label">Fecha y hora de Registro (ECU)</div>
+            <div class="meta-label">Fecha y hora de registro local</div>
             <div class="meta-value mono">{{ formatDateTime(reporteSeleccionado.fechaReporte) }}</div>
           </div>
           <div class="meta-card" *ngIf="reporteSeleccionado.iaLabel" style="background: rgba(168, 85, 247, 0.05); border-color: rgba(168, 85, 247, 0.3);">
@@ -275,4 +275,3 @@
     </div>
   </div>
 </div>
-

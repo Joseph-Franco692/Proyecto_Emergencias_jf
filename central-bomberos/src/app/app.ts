@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
+import { ThemeService } from './services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -8,6 +9,6 @@ import { RouterModule } from '@angular/router';
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })
-export class AppComponent { 
-  // ¡Mira qué limpio quedó! El padre ya no necesita hacer el trabajo pesado.
+export class AppComponent {
+  constructor(public themeService: ThemeService) {}
 }
