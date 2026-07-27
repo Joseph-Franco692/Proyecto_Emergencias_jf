@@ -9,6 +9,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const router = inject(Router);
   const token = authService.getToken();
+  const isPublicRequest =
+    req.url.includes('/api/premium/') ||
+    req.url.endsWith('/api/premium') ||
+    req.url.includes('/api/reportes');
 
   const handleAuthError = (error: HttpErrorResponse) => {
     // Un 403 significa que la sesión es válida pero el usuario no tiene permiso.
@@ -20,7 +24,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return throwError(() => error);
   };
 
-  if (token && req.url.includes('localhost:8081')) {
+  if (token && req.url.includes('localhost:8081') && !isPublicRequest) {
     const authReq = req.clone({
       setHeaders: {
         Authorization: `Bearer ${token}`

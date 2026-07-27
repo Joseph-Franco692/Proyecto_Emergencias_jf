@@ -1,0 +1,106 @@
+<main class="premium-page">
+  <nav class="topbar">
+    <a routerLink="/reportar" class="brand"><span>🚒</span> Bomberos SDMC</a>
+    <a routerLink="/reportar" class="back-link">← Volver a emergencias</a>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow">PREVENCIÓN PARA TU HOGAR O NEGOCIO</div>
+      <h1>Protección inteligente antes de que ocurra una emergencia.</h1>
+      <p>Instalamos un nodo IoT para vigilar condiciones de humo y apoyar la prevención de incendios en tu establecimiento.</p>
+      <div class="trust-row">
+        <span>✓ Instalación profesional</span>
+        <span>✓ Atención local</span>
+        <span>✓ Pago seguro</span>
+      </div>
+    </div>
+    <aside class="plan-card">
+      <span class="popular">PLAN PREMIUM</span>
+      <div class="price"><small>$</small>{{ precio }} <em>USD</em></div>
+      <p>Pago único de instalación</p>
+      <ul>
+        <li>Evaluación preventiva del lugar</li>
+        <li>Instalación del dispositivo IoT</li>
+        <li>Configuración y prueba técnica</li>
+        <li>Orientación básica de uso</li>
+      </ul>
+      <button type="button" (click)="solicitarInstalacion()">Solicitar instalación</button>
+    </aside>
+  </section>
+
+  <section class="checkout" *ngIf="step >= 2">
+    <div class="steps" *ngIf="step < 5">
+      <span [class.active]="step === 2" [class.done]="step > 2">1 <b>Datos del lugar</b></span>
+      <i></i>
+      <span [class.active]="step === 3 || step === 4">2 <b>Pago seguro</b></span>
+      <i></i>
+      <span>3 <b>Confirmación</b></span>
+    </div>
+
+    <div class="panel" *ngIf="step === 2">
+      <header><div><span class="panel-icon">⌂</span></div><section><h2>¿Dónde instalaremos el servicio?</h2><p>Un profesional utilizará estos datos para coordinar la visita.</p></section></header>
+      <div class="form-grid">
+        <label class="wide">Nombre completo *<input [(ngModel)]="form.nombres" placeholder="Nombre de la persona responsable"></label>
+        <label>Correo electrónico *<input type="email" [(ngModel)]="form.email" placeholder="correo@ejemplo.com"></label>
+        <label>Teléfono / WhatsApp *<input [(ngModel)]="form.telefono" placeholder="0991234567"></label>
+        <label>Tipo de establecimiento *
+          <select [(ngModel)]="form.tipoEstablecimiento">
+            <option value="VIVIENDA">Vivienda</option><option value="LOCAL_COMERCIAL">Local comercial</option>
+            <option value="OFICINA">Oficina</option><option value="BODEGA">Bodega</option><option value="OTRO">Otro</option>
+          </select>
+        </label>
+        <label>Nombre del establecimiento<input [(ngModel)]="form.nombreEstablecimiento" placeholder="Opcional"></label>
+        <label class="wide">Dirección exacta *<input [(ngModel)]="form.direccion" placeholder="Calle principal, número y calle secundaria"></label>
+        <label>Ciudad *<input [(ngModel)]="form.ciudad"></label>
+        <label>Provincia *<input [(ngModel)]="form.provincia"></label>
+        <label class="wide">Referencia para llegar<textarea [(ngModel)]="form.referencia" rows="3" placeholder="Color del inmueble, sector, punto de referencia..."></textarea></label>
+      </div>
+      <div class="location-note" *ngIf="form.latitud">📍 Ubicación aproximada detectada para facilitar la visita técnica.</div>
+      <p class="error" *ngIf="error">{{ error }}</p>
+      <div class="actions"><button class="secondary" (click)="step = 1">Atrás</button><button (click)="continuar()">Continuar al pago →</button></div>
+    </div>
+
+    <div class="panel payment-panel" *ngIf="step === 3">
+      <header><div><span class="panel-icon">🔒</span></div><section><h2>Selecciona tu forma de pago</h2><p>El precio se valida directamente en el servidor.</p></section></header>
+      <div class="summary"><span>Plan Premium de Prevención IoT</span><strong>${{ precio }} USD</strong></div>
+      <div class="payment-options single">
+        <button class="selected"><b>PayPal Demo</b><small>Pago de prueba mediante cuenta sandbox de PayPal</small></button>
+      </div>
+      <div class="secure-note">🔐 Tus credenciales de pago nunca pasan por este sistema; el cobro se realiza en la plataforma seleccionada.</div>
+      <p class="error" *ngIf="error">{{ error }}</p>
+      <div class="actions"><button class="secondary" (click)="step = 2">Editar datos</button><button (click)="crearOrden()" [disabled]="loading">{{ loading ? 'Preparando pago...' : 'Continuar de forma segura →' }}</button></div>
+    </div>
+
+    <div class="panel waiting-panel" *ngIf="step === 4 && order">
+      <div class="shield">🛡️</div><h2>Finaliza tu pago demo con PayPal</h2><p>Orden {{ order.codigoOrden }} · ${{ precio }} USD</p>
+      <div id="paypal-button-container"></div>
+      <p class="error" *ngIf="error">{{ error }}</p>
+      <button class="outline" *ngIf="error" (click)="reconciliarPaypal()" [disabled]="loading">
+        {{ loading ? 'Verificando...' : 'Verificar pago realizado' }}
+      </button>
+    </div>
+
+    <div class="panel success-panel" *ngIf="step === 5 && order">
+      <div class="success-mark">✓</div>
+      <span class="confirmed">PAGO CONFIRMADO</span>
+      <h2>¡Tu instalación está en camino!</h2>
+      <p>Recibimos correctamente tu pago. Nuestros profesionales se comunicarán contigo y acudirán al lugar indicado en un plazo máximo de <strong>2 días</strong>.</p>
+      <div class="confirmation-grid">
+        <div><small>NÚMERO DE ORDEN</small><b>{{ order.codigoOrden }}</b></div>
+        <div><small>ESTADO</small><b class="green">POR PROGRAMAR</b></div>
+        <div><small>CONTACTO</small><b>{{ form.telefono }}</b></div>
+        <div><small>FECHA LÍMITE DE VISITA</small><b>{{ order.fechaLimiteInstalacion | date:'dd/MM/yyyy' }}</b></div>
+      </div>
+      <p class="mail-note">Enviaremos la coordinación al correo <strong>{{ form.email }}</strong>. Conserva tu número de orden.</p>
+      <div class="actions centered"><a routerLink="/reportar" class="button-link">Volver al portal ciudadano</a><button class="secondary" (click)="nuevaSolicitud()">Nueva solicitud</button></div>
+    </div>
+  </section>
+
+  <section class="how">
+    <h2>Así funciona</h2>
+    <div><article><b>1</b><h3>Solicita</h3><p>Registra los datos exactos del establecimiento.</p></article>
+      <article><b>2</b><h3>Paga seguro</h3><p>Completa la demostración mediante PayPal Sandbox.</p></article>
+      <article><b>3</b><h3>Instalamos</h3><p>Nuestro equipo coordina y realiza la visita en hasta 2 días.</p></article></div>
+  </section>
+</main>

@@ -88,6 +88,40 @@
   min-width: 150px;
 }
 
+.premium-entry {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .65rem .9rem;
+  border: 1px solid rgba(34, 211, 238, .4);
+  border-radius: 10px;
+  color: #e6fbff;
+  background: rgba(34, 211, 238, .08);
+  text-decoration: none;
+  transition: .2s ease;
+}
+
+.premium-entry:hover {
+  border-color: #22d3ee;
+  transform: translateY(-1px);
+}
+
+.premium-entry b,
+.premium-entry small {
+  display: block;
+}
+
+.premium-entry b {
+  font-family: 'Barlow Condensed', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+}
+
+.premium-entry small {
+  color: var(--text2);
+  font-size: .7rem;
+}
+
 .progress-text {
   font-size: 0.85rem;
   color: var(--text2);

@@ -36,6 +36,7 @@ public class SecurityConfig {
                     "/api/auth/**",
                     "/api/mfa/**",
                     "/api/health",
+                    "/api/premium/**",
                     "/ws-emergencias/**",
                     "/ws-emergencias",
                     "/ws/**",
@@ -59,10 +60,12 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(Arrays.asList(
-            "http://localhost:4200",
-            "http://localhost:4201",
-            "http://127.0.0.1:4200"
+        config.setAllowedOriginPatterns(Arrays.asList(
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+            "http://192.168.*:*",
+            "https://*.ngrok-free.app",
+            "https://*.ngrok-free.dev"
         ));
 
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
