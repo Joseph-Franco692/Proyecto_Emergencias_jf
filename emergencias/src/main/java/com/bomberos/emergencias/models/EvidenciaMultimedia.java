@@ -27,6 +27,24 @@ public class EvidenciaMultimedia {
     @Column(name = "hash_sha256", length = 64)
     private String hashSha256; // Checksum SHA-256 para integridad y deduplicación distribuida
 
+    @Column(name = "proveedor_almacenamiento", length = 20)
+    private String proveedorAlmacenamiento;
+
+    @Column(name = "storage_key", unique = true, length = 36)
+    private String storageKey;
+
+    @Column(name = "pocketbase_record_id", length = 32)
+    private String pocketbaseRecordId;
+
+    @Column(name = "pocketbase_filename")
+    private String pocketbaseFilename;
+
+    @Column(name = "mime_type", length = 100)
+    private String mimeType;
+
+    @Column(name = "tamano_bytes")
+    private Long tamanoBytes;
+
     @Column(name = "fecha_subida", updatable = false)
     private LocalDateTime fechaSubida = LocalDateTime.now();
 }

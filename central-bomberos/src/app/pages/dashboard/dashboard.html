@@ -364,3 +364,64 @@
     </div>
   </div>
 </div>
+
+<!-- 🤖 ASISTENTE DE INTELIGENCIA ARTIFICIAL EN VIVO (OLLAMA LOCAL LLAMA 3.2) -->
+<div class="ai-widget-container">
+  <!-- Botón flotante -->
+  <button class="ai-float-btn" (click)="toggleAiChat()" [class.active]="showAiChat">
+    <span class="ai-icon">🤖</span>
+    <span class="ai-btn-text">Copiloto Operativo</span>
+    <span class="ai-badge">EN VIVO</span>
+  </button>
+
+  <!-- Ventana de Chat Flotante -->
+  <div class="ai-chat-window" *ngIf="showAiChat">
+    <!-- Chat Header -->
+    <div class="ai-chat-header">
+      <div class="ai-header-info">
+        <span class="ai-header-icon">🤖</span>
+        <div>
+          <div class="ai-header-title">Copiloto Operativo</div>
+          <div class="ai-header-sub">Datos verificados en tiempo real</div>
+        </div>
+      </div>
+      <button class="ai-close-btn" (click)="toggleAiChat()">✕</button>
+    </div>
+
+    <!-- Chat Messages Scroll Area -->
+    <div class="ai-chat-messages">
+      <div *ngFor="let msg of aiMessages" class="ai-msg-bubble" [ngClass]="msg.sender">
+        <div class="msg-author">{{ msg.sender === 'user' ? '🧑‍💻 Tú' : '🤖 Copiloto Operativo' }}</div>
+        <div class="msg-content" [innerHTML]="msg.text"></div>
+        <div class="msg-time">{{ msg.time }}</div>
+      </div>
+
+      <div *ngIf="isAiThinking" class="ai-msg-bubble ai thinking">
+        <div class="msg-author">🤖 Copiloto Operativo</div>
+        <div class="msg-content">
+          <span class="ai-dots">Consultando datos en vivo de PostgreSQL... <span>.</span><span>.</span><span>.</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prompt Chips Rápidos -->
+    <div class="ai-chips-container">
+      <button class="ai-chip" (click)="enviarPreguntaRapida('¿Qué unidades bomberiles están disponibles?')">🚒 Unidades Disponibles</button>
+      <button class="ai-chip" (click)="enviarPreguntaRapida('¿Cuántas emergencias hay activas en el sistema?')">🚨 Emergencias Activas</button>
+      <button class="ai-chip" (click)="enviarPreguntaRapida('Genera un resumen del turno de emergencias')">📊 Resumen del Turno</button>
+      <button class="ai-chip" (click)="enviarPreguntaRapida('¿Cómo está la calidad de aire del monitoreo IoT?')">📡 Estado IoT</button>
+    </div>
+
+    <!-- Chat Input Form -->
+    <div class="ai-chat-input-area">
+      <input type="text"
+             class="ai-input"
+             placeholder="Pregunta sobre unidades, emergencias, operadores..."
+             [(ngModel)]="preguntaAi"
+             (keyup.enter)="enviarConsultaIa()">
+      <button class="ai-send-btn" (click)="enviarConsultaIa()" [disabled]="isAiThinking || !preguntaAi.trim()">
+        <span>Enviar</span> ➔
+      </button>
+    </div>
+  </div>
+</div>

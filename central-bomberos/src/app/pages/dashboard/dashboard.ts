@@ -60,6 +60,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public showUsuariosModal: boolean = false;
   public listaUsuarios: any[] = [];
 
+  // 🤖 Copiloto operativo con respuestas verificadas desde PostgreSQL
+  public showAiChat: boolean = false;
+  public preguntaAi: string = '';
+  public isAiThinking: boolean = false;
+  public aiMessages: any[] = [
+    {
+      sender: 'ai',
+      text: '👋 ¡Hola! Soy tu <strong>Copiloto Operativo IA</strong>. Mi alcance está limitado a emergencias, reportes, unidades, operadores, despachos, bitácoras y monitoreo IoT de este sistema.',
+      time: new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
+    }
+  ];
+  private AI_URL = 'http://localhost:8081/api/ai/chat';
+
   // Usuario actual
   public currentUser$: any;
   public currentUser: AppUser | null = null;
@@ -601,6 +614,61 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.authService.logout().subscribe({
       next: () => this.router.navigate(['/login']),
       error: () => this.router.navigate(['/login'])
+    });
+  }
+
+  // 🤖 METODOS ASISTENTE IA OLLAMA
+  public toggleAiChat(): void {
+    this.showAiChat = !this.showAiChat;
+    this.cdr.detectChanges();
+  }
+
+  public enviarPreguntaRapida(pregunta: string): void {
+    this.preguntaAi = pregunta;
+    this.enviarConsultaIa();
+  }
+
+  public enviarConsultaIa(): void {
+    const texto = this.preguntaAi.trim();
+    if (!texto || this.isAiThinking) return;
+
+    const hora = new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+
+    this.aiMessages.push({
+      sender: 'user',
+      text: texto,
+      time: hora
+    });
+
+    this.preguntaAi = '';
+    this.isAiThinking = true;
+    this.cdr.detectChanges();
+
+    this.http.post<any>(this.AI_URL, { pregunta: texto }).subscribe({
+      next: (res) => {
+        this.ngZone.run(() => {
+          this.isAiThinking = false;
+          let respTexto = res.respuesta || 'No se recibió respuesta del modelo local.';
+          respTexto = respTexto.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+          this.aiMessages.push({
+            sender: 'ai',
+            text: respTexto,
+            time: new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
+          });
+          this.cdr.detectChanges();
+        });
+      },
+      error: (err) => {
+        this.ngZone.run(() => {
+          this.isAiThinking = false;
+          this.aiMessages.push({
+            sender: 'ai',
+            text: '⚠️ No se pudo consultar el Copiloto Operativo. Verifica que Spring Boot esté ejecutándose.',
+            time: new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
+          });
+          this.cdr.detectChanges();
+        });
+      }
     });
   }
 }

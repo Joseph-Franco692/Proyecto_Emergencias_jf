@@ -155,6 +155,32 @@ public class ReporteController {
         return ResponseEntity.ok(evidencias);
     }
 
+    @GetMapping("/evidencias/{storageKey}/archivo")
+    public ResponseEntity<byte[]> obtenerArchivoEvidencia(@PathVariable String storageKey) {
+        return reporteService.obtenerEvidenciaPorStorageKey(storageKey)
+                .map(evidencia -> {
+                    try {
+                        byte[] contenido = reporteService.cargarContenido(evidencia);
+                        MediaType tipo = MediaType.APPLICATION_OCTET_STREAM;
+                        if (evidencia.getMimeType() != null && !evidencia.getMimeType().isBlank()) {
+                            try {
+                                tipo = MediaType.parseMediaType(evidencia.getMimeType());
+                            } catch (InvalidMediaTypeException ignored) {
+                                // Se mantiene application/octet-stream.
+                            }
+                        }
+                        return ResponseEntity.ok()
+                                .contentType(tipo)
+                                .cacheControl(CacheControl.maxAge(java.time.Duration.ofHours(1)).cachePublic())
+                                .header("X-Content-SHA256", evidencia.getHashSha256())
+                                .body(contenido);
+                    } catch (Exception e) {
+                        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).<byte[]>build();
+                    }
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/stats/hilos")
     public ResponseEntity<Map<String, Object>> obtenerEstadisticasHilos() {
         Map<String, Object> stats = new HashMap<>();

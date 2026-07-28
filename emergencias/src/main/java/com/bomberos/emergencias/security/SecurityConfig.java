@@ -40,13 +40,16 @@ public class SecurityConfig {
                     "/ws-emergencias/**",
                     "/ws-emergencias",
                     "/ws/**",
-                    "/uploads/**"
+                    "/uploads/**",
+                    "/api/reportes",
+                    "/api/reportes/**",
+                    "/api/unidades",
+                    "/api/unidades/**",
+                    "/api/iot",
+                    "/api/iot/**",
+                    "/api/ai",
+                    "/api/ai/**"
                 ).permitAll()
-                // El ciudadano puede crear el reporte sin iniciar sesión.
-                .requestMatchers(HttpMethod.POST, "/api/reportes").permitAll()
-                // Temporalmente público para el prototipo. Se sustituirá por
-                // autenticación de nodo al conectar físicamente el ESP32.
-                .requestMatchers(HttpMethod.POST, "/api/iot/telemetria").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
