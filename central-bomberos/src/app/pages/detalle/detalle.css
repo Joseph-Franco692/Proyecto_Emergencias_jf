@@ -406,6 +406,21 @@
   background: linear-gradient(135deg,#059669,#047857);
   box-shadow: 0 4px 20px rgba(5,150,105,0.3);
 }
+.dispatch-btn.closed,
+.dispatch-btn:disabled {
+  background: #334155;
+  color: #e2e8f0;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.9;
+}
+.dispatch-btn.closed:hover,
+.dispatch-btn:disabled:hover {
+  background: #334155;
+  box-shadow: none;
+  transform: none;
+}
 
 .cargando {
   display: flex;

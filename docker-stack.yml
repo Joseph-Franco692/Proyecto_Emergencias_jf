@@ -1,0 +1,135 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - target: 5432
+        published: ${POSTGRES_PORT:-5433}
+        protocol: tcp
+        mode: host
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [interna]
+    deploy:
+      replicas: 1
+      restart_policy: { condition: on-failure }
+      placement:
+        constraints: [node.role == manager]
+
+  pocketbase:
+    image: gestion-bomberil-pocketbase:local
+    environment:
+      POCKETBASE_SUPERUSER_EMAIL: ${POCKETBASE_SUPERUSER_EMAIL:-}
+      POCKETBASE_SUPERUSER_PASSWORD: ${POCKETBASE_SUPERUSER_PASSWORD:-}
+    ports:
+      - target: 8090
+        published: ${POCKETBASE_PORT:-8091}
+        protocol: tcp
+        mode: host
+    volumes:
+      - pocketbase_data:/pb/pb_data
+    networks: [interna]
+    deploy:
+      replicas: 1
+      restart_policy: { condition: on-failure }
+      placement:
+        constraints: [node.role == manager]
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - target: 11434
+        published: ${OLLAMA_PORT:-11435}
+        protocol: tcp
+        mode: host
+    volumes:
+      - ollama_data:/root/.ollama
+    networks: [interna]
+    deploy:
+      replicas: 1
+      restart_policy: { condition: on-failure }
+      placement:
+        constraints: [node.role == manager]
+
+  backend:
+    image: gestion-bomberil-backend:local
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      EVIDENCE_STORAGE_PROVIDER: pocketbase
+      EVIDENCE_LOCAL_DIRECTORY: /app/uploads
+      POCKETBASE_URL: http://pocketbase:8090
+      POCKETBASE_COLLECTION: ${POCKETBASE_COLLECTION}
+      POCKETBASE_TOKEN: ${POCKETBASE_TOKEN}
+      POCKETBASE_SUPERUSER_EMAIL: ${POCKETBASE_SUPERUSER_EMAIL:-}
+      POCKETBASE_SUPERUSER_PASSWORD: ${POCKETBASE_SUPERUSER_PASSWORD:-}
+      OLLAMA_URL: http://ollama:11434/api/generate
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      IOT_NODE_KEY: ${IOT_NODE_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8080}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
+      PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
+    ports:
+      - target: 8081
+        published: ${BACKEND_PORT:-8082}
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - backend_uploads:/app/uploads
+    networks: [interna]
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+      placement:
+        constraints: [node.role == manager]
+
+  frontend:
+    image: gestion-bomberil-frontend:local
+    ports:
+      - target: 80
+        published: ${FRONTEND_PORT:-8080}
+        protocol: tcp
+        mode: ingress
+    networks: [interna]
+    deploy:
+      replicas: 2
+      restart_policy: { condition: on-failure }
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    command: ["http", "--url=${NGROK_DOMAIN}", "backend:8081"]
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - target: 4040
+        published: ${NGROK_INSPECT_PORT:-4041}
+        protocol: tcp
+        mode: host
+    networks: [interna]
+    deploy:
+      replicas: 1
+      restart_policy: { condition: on-failure }
+      placement:
+        constraints: [node.role == manager]
+
+networks:
+  interna:
+    driver: overlay
+
+volumes:
+  postgres_data:
+  pocketbase_data:
+  ollama_data:
+  backend_uploads:

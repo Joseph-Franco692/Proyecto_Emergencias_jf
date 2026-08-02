@@ -1,9 +1,9 @@
 <div class="cargando" *ngIf="!reporteSeleccionado && !errorMessage">
-  <h2>📡 Conectando con la base de datos de bomberos...</h2>
+  <h2>Conectando con el centro de operaciones...</h2>
 </div>
 
 <div class="cargando" *ngIf="errorMessage" style="flex-direction: column; gap: 20px; text-align: center; padding: 40px;">
-  <h2 style="color: var(--red2);">❌ Error de Conexión</h2>
+  <h2 style="color: var(--red2);">Error de conexión</h2>
   <p style="color: var(--text2); max-width: 500px; line-height: 1.6; font-size: 14px;">{{ errorMessage }}</p>
   <button class="back-btn" routerLink="/" style="margin-top: 10px;">← Volver al Mapa</button>
 </div>
@@ -21,9 +21,8 @@
     <div class="left-col">
       <!-- Severity Banner -->
       <div class="severity-banner" [ngClass]="classif.severity">
-        <div class="sev-icon">{{ classif.icon }}</div>
         <div>
-          <div class="sev-title" [ngClass]="classif.severity">{{ classif.title }} — NIVEL {{ getSeverityLevel() }}</div>
+          <div class="sev-title" [ngClass]="classif.severity">{{ classif.title }}</div>
           <div class="sev-sub">Ubicación del suceso · Registro ciudadano verificado</div>
         </div>
         <div class="sev-right">
@@ -42,11 +41,10 @@
           <div *ngFor="let ev of evidencias; let i = index" class="media-thumb" (click)="ev.tipoArchivo === 'FOTO' ? abrirImagen(ev.urlArchivo) : null">
             <img *ngIf="ev.tipoArchivo === 'FOTO'" [src]="getMediaUrl(ev.urlArchivo)" class="media-img" alt="Evidencia Ciudadana">
             <video *ngIf="ev.tipoArchivo === 'VIDEO'" [src]="getMediaUrl(ev.urlArchivo)" class="media-img" controls style="width: 100%; height: 100%; object-fit: contain; background: #000;"></video>
-            <div class="media-overlay" *ngIf="ev.tipoArchivo === 'FOTO'">🔍 Ver imagen</div>
+            <div class="media-overlay" *ngIf="ev.tipoArchivo === 'FOTO'">Ver imagen</div>
           </div>
           <!-- Fallback if no real files exist in the report -->
           <div *ngIf="evidencias.length === 0" style="grid-column: 1 / -1; padding: 24px; background: rgba(255, 255, 255, 0.02); border: 1.2px dashed var(--border); border-radius: 8px; text-align: center; color: var(--text2);">
-            <span style="font-size: 20px; display: block; margin-bottom: 6px;">📁</span>
             No se adjuntaron evidencias multimedia para este reporte.
           </div>
         </div>
@@ -86,7 +84,7 @@
           </div>
           <div class="meta-card" *ngIf="reporteSeleccionado.iaLabel" style="background: rgba(168, 85, 247, 0.05); border-color: rgba(168, 85, 247, 0.3);">
             <div class="meta-label" style="color: #c084fc;">Análisis de Inteligencia Artificial</div>
-            <div class="meta-value">🤖 {{ reporteSeleccionado.iaLabel }} <span style="opacity: 0.8; font-size: 0.9em;">({{ reporteSeleccionado.iaConfidence | number:'1.0-0' }}% prob.)</span></div>
+            <div class="meta-value">{{ reporteSeleccionado.iaLabel }} <span style="opacity: 0.8; font-size: 0.9em;">({{ reporteSeleccionado.iaConfidence | number:'1.0-0' }}% prob.)</span></div>
           </div>
           <div class="meta-card">
             <div class="meta-label">Estado Operativo</div>
@@ -106,7 +104,7 @@
       <!-- Monitoreo IoT Post-Incendio & Habitabilidad -->
       <div style="margin-top: 16px;">
         <div class="section-title">
-          <span>📡 Monitoreo IoT Post-Incendio & Evaluación de Habitabilidad</span>
+          <span>Monitoreo IoT post-incendio y evaluación de habitabilidad</span>
         </div>
 
         <div class="iot-card" [ngClass]="{'iot-active': iotConectado}">
@@ -140,9 +138,6 @@
               'verdict-warn': ultimaLecturaIot.evaluacionHabitabilidad === 'EVALUANDO',
               'verdict-danger': ultimaLecturaIot.evaluacionHabitabilidad === 'NO_HABITABLE'
             }">
-              <div class="verdict-icon">
-                {{ ultimaLecturaIot.evaluacionHabitabilidad === 'HABITABLE' ? '🟢' : (ultimaLecturaIot.evaluacionHabitabilidad === 'EVALUANDO' ? '🟡' : '🔴') }}
-              </div>
               <div class="verdict-info">
                 <div class="verdict-title">
                   {{ ultimaLecturaIot.evaluacionHabitabilidad === 'HABITABLE' ? 'LUGAR SEGURO / HABITABLE' : (ultimaLecturaIot.evaluacionHabitabilidad === 'EVALUANDO' ? 'EVALUACIÓN EN PROCESO' : '¡PELIGRO! EVACUAR LUGAR') }}
@@ -156,7 +151,6 @@
 
           <!-- Fallback when no telemetry exists -->
           <div *ngIf="!ultimaLecturaIot" class="iot-empty">
-            <span style="font-size: 24px; display: block; margin-bottom: 6px;">📟</span>
             El nodo ESP32 aún no ha iniciado sesión para este incidente.
             <div style="font-size: 11px; opacity: 0.7; margin-top: 4px;">Enciende el switch del detector en el sitio para iniciar la transmisión automática.</div>
           </div>
@@ -183,20 +177,24 @@
         <!-- Dispatched units list -->
         <div *ngIf="unidadesDespachadas.length > 0" class="unidades-despachadas-list">
           <div *ngFor="let u of unidadesDespachadas" class="unidad-chip">
-            🚒 {{ u.nombre }}
+            {{ u.nombre }}
             <span class="unidad-chip-estado">EN RUTA</span>
           </div>
         </div>
 
         <div *ngIf="despachoMensaje" class="despacho-feedback">{{ despachoMensaje }}</div>
 
-        <button class="dispatch-btn" [ngClass]="{ 'dispatched': isDispatched }" (click)="abrirModalDespacho()">
-          {{ isDispatched ? '✓ VER / GESTIONAR UNIDADES DESPACHADAS' : '🚒 DESPACHAR UNIDADES DE RESCATE' }}
+        <button class="dispatch-btn"
+                [ngClass]="{ 'dispatched': isDispatched, 'closed': reporteFinalizado }"
+                [disabled]="reporteFinalizado"
+                (click)="abrirModalDespacho()">
+          {{ reporteFinalizado
+              ? 'INCIDENTE ATENDIDO — DESPACHO CERRADO'
+              : (isDispatched ? 'VER / GESTIONAR UNIDADES DESPACHADAS' : 'DESPACHAR UNIDADES DE RESCATE') }}
         </button>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">
-          <button style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:7px;border-radius:5px;font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif" (click)="llamarReportero()">📞 Llamar</button>
-          <button style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:7px;border-radius:5px;font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif" (click)="navegarCoordenadas()">📍 Navegar</button>
-          <button style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:7px;border-radius:5px;font-size:11px;cursor:pointer;font-family:'Barlow',sans-serif" (click)="cerrarIncidente()">📋 Cerrar</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
+          <button style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:7px;border-radius:5px;font-size:11px;cursor:pointer" (click)="llamarReportero()">Llamar</button>
+          <button style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:7px;border-radius:5px;font-size:11px;cursor:pointer" (click)="navegarCoordenadas()">Navegar</button>
         </div>
       </div>
     </div>
@@ -214,7 +212,7 @@
     <!-- Header -->
     <div class="modal-header">
       <div>
-        <div class="modal-title">🚒 DESPACHO DE UNIDADES</div>
+        <div class="modal-title">DESPACHO DE UNIDADES</div>
         <div class="modal-subtitle">Incidente #INC-{{ idIncidente }} · Selecciona las unidades a enviar</div>
       </div>
       <button class="modal-close-btn" (click)="cerrarModalDespacho()">✕</button>
@@ -228,7 +226,6 @@
 
     <!-- Empty state -->
     <div *ngIf="!isLoadingUnidades && unidadesDisponibles.length === 0 && !isDispatched" class="modal-empty">
-      <div style="font-size:32px; margin-bottom:8px;">🚧</div>
       <div style="color: var(--amber); font-weight:600; margin-bottom:4px;">Sin unidades disponibles</div>
       <div style="color:var(--text2); font-size:12px;">Todas las unidades están actualmente en ruta o en sitio.</div>
     </div>
@@ -244,7 +241,6 @@
             <span *ngIf="isUnidadSeleccionada(unidad.id)">✓</span>
           </div>
         </div>
-        <div class="unit-icon">🚒</div>
         <div class="unit-info">
           <div class="unit-name">{{ unidad.nombre }}</div>
           <div class="unit-tipo">{{ unidad.tipo }}</div>
@@ -254,7 +250,7 @@
     </div>
 
     <!-- Feedback message -->
-    <div *ngIf="despachoMensaje" class="modal-feedback" [class.error]="despachoMensaje.startsWith('❌')">
+    <div *ngIf="despachoMensaje" class="modal-feedback" [class.error]="despachoMensaje.startsWith('Error')">
       {{ despachoMensaje }}
     </div>
 
@@ -269,7 +265,7 @@
                 [disabled]="isDespachandoUnidades || unidadesSeleccionadas.size === 0"
                 (click)="confirmarDespacho()">
           <span *ngIf="isDespachandoUnidades" class="btn-spinner">⟳</span>
-          <span *ngIf="!isDespachandoUnidades">🚒 CONFIRMAR DESPACHO</span>
+          <span *ngIf="!isDespachandoUnidades">CONFIRMAR DESPACHO</span>
         </button>
       </div>
     </div>

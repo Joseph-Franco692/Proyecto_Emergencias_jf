@@ -1,6 +1,6 @@
 <main class="premium-page">
   <nav class="topbar">
-    <a routerLink="/reportar" class="brand"><span>🚒</span> Gestión Bomberil</a>
+    <a routerLink="/reportar" class="brand">Gestión Bomberil</a>
     <a routerLink="/reportar" class="back-link">← Volver a emergencias</a>
   </nav>
 
@@ -41,9 +41,9 @@
     <div class="panel" *ngIf="step === 2">
       <header><div><span class="panel-icon">⌂</span></div><section><h2>¿Dónde instalaremos el servicio?</h2><p>Un profesional utilizará estos datos para coordinar la visita.</p></section></header>
       <div class="form-grid">
-        <label class="wide">Nombre completo *<input [(ngModel)]="form.nombres" placeholder="Nombre de la persona responsable"></label>
+        <label class="wide">Nombre completo *<input [(ngModel)]="form.nombres" maxlength="80" autocomplete="name" placeholder="Nombre de la persona responsable"></label>
         <label>Correo electrónico *<input type="email" [(ngModel)]="form.email" placeholder="correo@ejemplo.com"></label>
-        <label>Teléfono / WhatsApp *<input [(ngModel)]="form.telefono" placeholder="0991234567"></label>
+        <label>Teléfono / WhatsApp *<input [(ngModel)]="form.telefono" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="0991234567"></label>
         <label>Tipo de establecimiento *
           <select [(ngModel)]="form.tipoEstablecimiento">
             <option value="VIVIENDA">Vivienda</option><option value="LOCAL_COMERCIAL">Local comercial</option>
@@ -51,29 +51,29 @@
           </select>
         </label>
         <label>Nombre del establecimiento<input [(ngModel)]="form.nombreEstablecimiento" placeholder="Opcional"></label>
-        <label class="wide">Dirección exacta *<input [(ngModel)]="form.direccion" placeholder="Calle principal, número y calle secundaria"></label>
+        <label class="wide">Dirección exacta *<input [(ngModel)]="form.direccion" maxlength="180" autocomplete="street-address" placeholder="Calle principal, número y calle secundaria"></label>
         <label>Ciudad *<input [(ngModel)]="form.ciudad"></label>
         <label>Provincia *<input [(ngModel)]="form.provincia"></label>
         <label class="wide">Referencia para llegar<textarea [(ngModel)]="form.referencia" rows="3" placeholder="Color del inmueble, sector, punto de referencia..."></textarea></label>
       </div>
-      <div class="location-note" *ngIf="form.latitud">📍 Ubicación aproximada detectada para facilitar la visita técnica.</div>
+      <div class="location-note" *ngIf="form.latitud">Ubicación aproximada detectada para facilitar la visita técnica.</div>
       <p class="error" *ngIf="error">{{ error }}</p>
       <div class="actions"><button class="secondary" (click)="step = 1">Atrás</button><button (click)="continuar()">Continuar al pago →</button></div>
     </div>
 
     <div class="panel payment-panel" *ngIf="step === 3">
-      <header><div><span class="panel-icon">🔒</span></div><section><h2>Selecciona tu forma de pago</h2><p>El precio se valida directamente en el servidor.</p></section></header>
+      <header><section><h2>Selecciona tu forma de pago</h2><p>El precio se valida directamente en el servidor.</p></section></header>
       <div class="summary"><span>Plan Premium de Prevención IoT</span><strong>${{ precio }} USD</strong></div>
       <div class="payment-options single">
         <button class="selected"><b>PayPal Demo</b><small>Pago de prueba mediante cuenta sandbox de PayPal</small></button>
       </div>
-      <div class="secure-note">🔐 Tus credenciales de pago nunca pasan por este sistema; el cobro se realiza en la plataforma seleccionada.</div>
+      <div class="secure-note">Tus credenciales de pago nunca pasan por este sistema; el cobro se realiza en la plataforma seleccionada.</div>
       <p class="error" *ngIf="error">{{ error }}</p>
       <div class="actions"><button class="secondary" (click)="step = 2">Editar datos</button><button (click)="crearOrden()" [disabled]="loading">{{ loading ? 'Preparando pago...' : 'Continuar de forma segura →' }}</button></div>
     </div>
 
     <div class="panel waiting-panel" *ngIf="step === 4 && order">
-      <div class="shield">🛡️</div><h2>Finaliza tu pago demo con PayPal</h2><p>Orden {{ order.codigoOrden }} · ${{ precio }} USD</p>
+      <h2>Finaliza tu pago demo con PayPal</h2><p>Orden {{ order.codigoOrden }} · ${{ precio }} USD</p>
       <div id="paypal-button-container"></div>
       <p class="error" *ngIf="error">{{ error }}</p>
       <button class="outline" *ngIf="error" (click)="reconciliarPaypal()" [disabled]="loading">

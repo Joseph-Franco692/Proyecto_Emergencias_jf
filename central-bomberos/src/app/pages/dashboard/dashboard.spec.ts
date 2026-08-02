@@ -41,4 +41,9 @@ describe('Dashboard', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('should present the persisted report lifecycle clearly', () => {
+    expect(component.getEstadoReporteLabel({ estado: 'PENDIENTE' })).toBe('PENDIENTE');
+    expect(component.getEstadoReporteLabel({ estado: 'EN_ATENCION' })).toBe('EN ATENCIÓN');
+  });
 });

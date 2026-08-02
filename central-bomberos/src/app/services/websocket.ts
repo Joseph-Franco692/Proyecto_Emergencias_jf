@@ -22,7 +22,7 @@ export class WebsocketService {
 
     this.stompClient = new Client({
       // LA MAGIA ESTÁ AQUÍ: Usamos WebSocket Nativo puro, eliminando SockJS
-      brokerURL: 'ws://localhost:8081/ws-emergencias',
+      brokerURL: `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws-emergencias`,
       debug: (str) => {
         if (str.includes('CONNECTED') || str.includes('ERROR') || str.includes('SUBSCRIBE')) {
           console.log('[WS-STOMP]', str);

@@ -33,4 +33,16 @@ describe('Detalle', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('should lock dispatch when the backend reports the incident as attended', () => {
+    component.idIncidente = '42';
+    localStorage.setItem('dispatched_report_42', 'true');
+
+    (component as any).aplicarEstadoReporte({ estado: 'ATENDIDO' });
+
+    expect(component.reporteFinalizado).toBe(true);
+    expect(component.isDispatched).toBe(false);
+    expect(component.despachoMensaje).toContain('finalizado');
+    expect(localStorage.getItem('dispatched_report_42')).toBeNull();
+  });
 });

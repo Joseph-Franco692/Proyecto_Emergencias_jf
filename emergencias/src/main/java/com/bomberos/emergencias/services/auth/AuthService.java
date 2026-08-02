@@ -12,15 +12,20 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 import java.util.UUID;
 
 @Service
@@ -32,6 +37,12 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
+
+    @Value("${app.frontend-url:http://localhost:4200}")
+    private String frontendUrl;
+
+    private static final int RESET_TOKEN_MINUTES = 15;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private static final String GOOGLE_CLIENT_ID =
         "972842219867-4t1bv2l523jevau1uqjrforlfoj51hbg.apps.googleusercontent.com";
@@ -104,7 +115,12 @@ public class AuthService {
     // ─── REENVIAR CÓDIGO ──────────────────────────────────────────────────────────
     @Transactional
     public Map<String, Object> resendCode(String email) {
-        Usuario user = repository.findByEmail(email.toLowerCase().trim())
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("El correo es requerido.");
+        }
+
+        String cleanEmail = email.toLowerCase().trim();
+        Usuario user = repository.findWithLockByEmail(cleanEmail)
             .orElseThrow(() -> new RuntimeException("No existe una cuenta registrada con ese correo."));
 
         if ("ACTIVE".equals(user.getStatus())) {
@@ -118,20 +134,28 @@ public class AuthService {
         user.setUpdatedAt(LocalDateTime.now());
         repository.save(user);
 
-        sendVerificationEmail(email, user.getName(), code);
+        sendVerificationEmail(cleanEmail, user.getName(), code);
 
         return Map.of(
             "success", true,
-            "message", "Nuevo código de verificación enviado a tu correo."
+            "message", "Nuevo código enviado. Utiliza únicamente el correo más reciente."
         );
     }
 
     // ─── VERIFICAR CUENTA ─────────────────────────────────────────────────────────
-    @Transactional
+    @Transactional(noRollbackFor = InvalidVerificationCodeException.class)
     public Map<String, Object> verifyAccount(String email, String code) {
-        if (email == null || code == null) throw new RuntimeException("Correo y código son requeridos.");
+        if (email == null || email.isBlank() || code == null || code.isBlank()) {
+            throw new RuntimeException("Correo y código son requeridos.");
+        }
 
-        Usuario user = repository.findByEmail(email.toLowerCase().trim())
+        String cleanEmail = email.toLowerCase().trim();
+        String cleanCode = code.replaceAll("\\D", "");
+        if (cleanCode.length() != 6) {
+            throw new RuntimeException("El código debe contener exactamente 6 dígitos.");
+        }
+
+        Usuario user = repository.findWithLockByEmail(cleanEmail)
             .orElseThrow(() -> new RuntimeException("No existe una cuenta con ese correo."));
 
         if ("ACTIVE".equals(user.getStatus())) {
@@ -153,11 +177,14 @@ public class AuthService {
             throw new RuntimeException("Demasiados intentos fallidos. Solicita un código nuevo.");
         }
 
-        if (!user.getVerificationCode().equals(code.trim())) {
+        if (!user.getVerificationCode().equals(cleanCode)) {
             user.setVerificationAttempts(user.getVerificationAttempts() + 1);
             repository.save(user);
             int remaining = 5 - user.getVerificationAttempts();
-            throw new RuntimeException("Código incorrecto. Te quedan " + remaining + " intentos.");
+            throw new InvalidVerificationCodeException(
+                    "Código incorrecto o reemplazado por uno más reciente. Te quedan "
+                            + remaining + " intentos."
+            );
         }
 
         user.setStatus("ACTIVE");
@@ -171,6 +198,76 @@ public class AuthService {
         return Map.of(
             "success", true,
             "message", "¡Cuenta activada! Ahora inicia sesión con tu correo y contraseña."
+        );
+    }
+
+    // ─── RECUPERACIÓN DE CONTRASEÑA ──────────────────────────────────────────
+    /**
+     * Genera un token de un solo uso. La respuesta es siempre genérica para no
+     * revelar si una dirección de correo está registrada.
+     */
+    @Transactional
+    public Map<String, Object> requestPasswordReset(String email) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("El correo es requerido.");
+        }
+
+        String cleanEmail = email.toLowerCase().trim();
+        repository.findByEmail(cleanEmail)
+                .filter(user -> "ACTIVE".equals(user.getStatus()))
+                .ifPresent(user -> {
+                    String rawToken = generateSecureResetToken();
+                    user.setResetToken(hashResetToken(rawToken));
+                    user.setResetTokenExpiresAt(LocalDateTime.now().plusMinutes(RESET_TOKEN_MINUTES));
+                    user.setUpdatedAt(LocalDateTime.now());
+                    repository.save(user);
+
+                    String baseUrl = frontendUrl.replaceAll("/+$", "");
+                    String resetUrl = baseUrl + "/login?resetToken=" + rawToken;
+                    emailService.sendPasswordResetEmail(
+                            user.getEmail(),
+                            user.getName(),
+                            resetUrl,
+                            RESET_TOKEN_MINUTES
+                    );
+                });
+
+        return Map.of(
+                "success", true,
+                "message", "Si el correo corresponde a una cuenta activa, recibirás un enlace para restablecer tu contraseña."
+        );
+    }
+
+    /**
+     * Consume el token una sola vez y reemplaza la contraseña mediante BCrypt.
+     */
+    @Transactional
+    public Map<String, Object> resetPassword(String rawToken, String newPassword) {
+        if (rawToken == null || rawToken.isBlank()) {
+            throw new RuntimeException("El enlace de recuperación no es válido.");
+        }
+        validateNewPassword(newPassword);
+
+        Usuario user = repository.findWithLockByResetToken(hashResetToken(rawToken))
+                .orElseThrow(() -> new RuntimeException("El enlace de recuperación no es válido o ya fue utilizado."));
+
+        if (user.getResetTokenExpiresAt() == null
+                || user.getResetTokenExpiresAt().isBefore(LocalDateTime.now())) {
+            user.setResetToken(null);
+            user.setResetTokenExpiresAt(null);
+            repository.save(user);
+            throw new RuntimeException("El enlace de recuperación expiró. Solicita uno nuevo.");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setResetToken(null);
+        user.setResetTokenExpiresAt(null);
+        user.setUpdatedAt(LocalDateTime.now());
+        repository.save(user);
+
+        return Map.of(
+                "success", true,
+                "message", "Contraseña actualizada correctamente. Ya puedes iniciar sesión."
         );
     }
 
@@ -329,17 +426,38 @@ public class AuthService {
 
     // ─── HELPERS PRIVADOS ─────────────────────────────────────────────────────────
     private String generateCode() {
-        return String.format("%06d", new Random().nextInt(1_000_000));
+        return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+    }
+
+    private String generateSecureResetToken() {
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String hashResetToken(String rawToken) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(rawToken.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 no está disponible", e);
+        }
+    }
+
+    private void validateNewPassword(String password) {
+        if (password == null
+                || password.length() < 8
+                || password.length() > 72
+                || !password.matches(".*[A-Za-z].*")
+                || !password.matches(".*\\d.*")) {
+            throw new RuntimeException("La contraseña debe tener entre 8 y 72 caracteres, al menos una letra y un número.");
+        }
     }
 
     private void sendVerificationEmail(String email, String name, String code) {
-        try {
-            emailService.sendVerificationEmail(email, name, code);
-            System.out.printf("[AUTH] Correo enviado a %s | código: %s%n", email, code);
-        } catch (Exception e) {
-            System.err.printf("[AUTH] No se pudo enviar correo a %s: %s%n", email, e.getMessage());
-            System.out.printf("[AUTH] *** CÓDIGO PARA PRUEBAS (consola): %s ***%n", code);
-        }
+        emailService.sendVerificationEmail(email, name, code);
+        System.out.printf("[AUTH] Correo de verificación aceptado para %s%n", email);
     }
 
     public Map<String, Object> buildUserDto(Usuario user) {

@@ -35,8 +35,8 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
   public finalizadoMensaje: string = '';
 
   // ─── INSTRUCCIONES DE RUTA ───────────────────────────────────────────────
-  public instruccionActual: string = '📍 Calculando ruta...';
-  public instruccionIcono: string = '➡️';
+  public instruccionActual: string = 'Calculando ruta...';
+  public instruccionIcono: string = '→';
   public isCalculandoRuta: boolean = false;
   public rutaCalculada: boolean = false;
 
@@ -55,9 +55,9 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
   private pasoActualIndex: number = 0;
   private pasosRuta: any[] = [];
 
-  private readonly API_URL = 'http://localhost:8081/api/reportes';
-  private readonly UNIDADES_URL = 'http://localhost:8081/api/unidades';
-  private readonly IOT_URL = 'http://localhost:8081/api/iot';
+  private readonly API_URL = '/api/reportes';
+  private readonly UNIDADES_URL = '/api/unidades';
+  private readonly IOT_URL = '/api/iot';
   private readonly UNIDAD_ACTIVA_KEY = 'bomberos_unidad_activa';
   private wsSub!: Subscription;
   private iotSub!: Subscription;
@@ -65,6 +65,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
   private heartbeatInterval: any;
   private timerSeconds: number = 0;
   private recalcInterval: any;
+  private syncInterval: any;
 
   public currentUser$: any;
   public currentUser: AppUser | null = null;
@@ -98,6 +99,10 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     this.iniciarEscuchaIot();
     this.iniciarGPS();
     this.restaurarUnidadActiva();
+    // Con Swarm existen dos rÃ©plicas del backend. El WebSocket puede estar
+    // conectado a una rÃ©plica distinta de la que procesÃ³ el despacho, por lo
+    // que esta verificaciÃ³n corta garantiza la asignaciÃ³n sin recargar.
+    this.syncInterval = setInterval(() => this.sincronizarUnidadActiva(), 2500);
   }
 
   ngOnDestroy(): void {
@@ -106,6 +111,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     if (this.timerInterval) clearInterval(this.timerInterval);
     if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
     if (this.recalcInterval) clearInterval(this.recalcInterval);
+    if (this.syncInterval) clearInterval(this.syncInterval);
     if (this.watchId !== null) navigator.geolocation.clearWatch(this.watchId);
     if (this.mapa) this.mapa.remove();
   }
@@ -146,8 +152,8 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
   }
 
   public confirmarSeleccionOperador(): void {
-    if (!this.formOperador || this.formOperador.trim() === '') {
-       alert('Debe ingresar el nombre del operador para poder registrar la unidad.');
+    if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]{3,80}$/.test(this.formOperador.trim())) {
+       alert('Ingresa un nombre válido para registrar al operador.');
        return;
     }
     
@@ -171,22 +177,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
         this.ngZone.run(() => {
           if (unidadBD && unidadBD.reporteAsignado) {
             console.log('🚨 LA UNIDAD YA TIENE EMERGENCIA ASIGNADA EN BD:', unidadBD.reporteAsignado);
-            const rep = unidadBD.reporteAsignado;
-            this.emergenciaActual = {
-              reporteId: rep.id,
-              latitud: Number(rep.latitud),
-              longitud: Number(rep.longitud),
-              descripcion: rep.descripcion,
-              celular: rep.celularReportero || ''
-            };
-            this.unidadActual = { ...this.unidadActual, estado: 'EN_RUTA' };
-            this.guardarUnidadActiva();
-            this.fase = 'ruta';
-            this.iniciarTimerRuta();
-            setTimeout(() => {
-              this.inicializarMapa();
-              setTimeout(() => this.calcularRutaOSRM(), 400);
-            }, 250);
+            this.activarEmergenciaAsignada(unidadBD.reporteAsignado);
           } else {
             this.unidadActual = { ...this.unidadActual, ...unidadBD };
             this.guardarUnidadActiva();
@@ -238,6 +229,32 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     } catch {
       localStorage.removeItem(this.UNIDAD_ACTIVA_KEY);
     }
+  }
+
+  private sincronizarUnidadActiva(): void {
+    if (!this.unidadActual?.id) return;
+    this.http.get<any>(`${this.UNIDADES_URL}/${this.unidadActual.id}`).subscribe({
+      next: (unidadBD) => {
+        this.ngZone.run(() => {
+          if (!unidadBD?.id) return;
+          const estadoAnterior = this.unidadActual?.estado;
+          this.unidadActual = { ...this.unidadActual, ...unidadBD };
+          this.guardarUnidadActiva();
+
+          if (unidadBD.reporteAsignado) {
+            this.activarEmergenciaAsignada(unidadBD.reporteAsignado);
+          } else if (!unidadBD.reporteAsignado && estadoAnterior !== 'DISPONIBLE' && this.fase !== 'seleccion') {
+            this.fase = 'espera';
+            this.cdr.detectChanges();
+          } else {
+            this.cdr.detectChanges();
+          }
+        });
+      },
+      error: () => {
+        // Silencioso: si el backend cae un instante, la UI conserva el último estado.
+      }
+    });
   }
 
   public cambiarUnidad(): void {
@@ -422,14 +439,30 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
 
     console.log('🚨 DESPACHO RECIBIDO EN TIEMPO REAL PARA ESTA UNIDAD:', evento);
 
-    this.emergenciaActual = {
-      reporteId: evento.reporteId,
-      latitud: Number(evento.latitud),
-      longitud: Number(evento.longitud),
+    this.activarEmergenciaAsignada({
+      id: evento.reporteId,
+      latitud: evento.latitud,
+      longitud: evento.longitud,
       descripcion: evento.descripcion,
-      celular: evento.celularReportero || ''
-    };
+      celularReportero: evento.celularReportero || ''
+    });
+  }
 
+  /** Activa una asignaciÃ³n desde WebSocket o desde la sincronizaciÃ³n de BD. */
+  private activarEmergenciaAsignada(reporte: any): void {
+    if (!reporte?.id || !this.unidadActual) return;
+
+    const mismaEmergencia = this.fase === 'ruta'
+      && String(this.emergenciaActual?.reporteId) === String(reporte.id);
+    if (mismaEmergencia) return;
+
+    this.emergenciaActual = {
+      reporteId: reporte.id,
+      latitud: Number(reporte.latitud),
+      longitud: Number(reporte.longitud),
+      descripcion: reporte.descripcion || 'Emergencia asignada por la central.',
+      celular: reporte.celularReportero || reporte.celular || ''
+    };
     this.unidadActual = { ...this.unidadActual, estado: 'EN_RUTA' };
     this.guardarUnidadActiva();
     this.fase = 'ruta';
@@ -438,8 +471,8 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
 
     setTimeout(() => {
       this.inicializarMapa();
-      setTimeout(() => this.calcularRutaOSRM(), 400);
-    }, 250);
+      setTimeout(() => this.calcularRutaOSRM(), 350);
+    }, 80);
   }
 
   private procesarLiberacion(): void {
@@ -450,7 +483,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     this.rutaCalculada = false;
     this.coordenadasRuta = [];
     this.pasosRuta = [];
-    this.instruccionActual = '📍 Calculando ruta...';
+    this.instruccionActual = 'Calculando ruta...';
     if (this.timerInterval) clearInterval(this.timerInterval);
     if (this.recalcInterval) clearInterval(this.recalcInterval);
     this.timerSeconds = 0;
@@ -481,7 +514,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
       attributionControl: false
     }).setView([lat, lng], 15);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       subdomains: 'abcd',
       maxZoom: 20
     }).addTo(this.mapa);
@@ -506,7 +539,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
 
     this.marcadorUnidad = L.marker([lat, lng], { icon: iconoUnidad, zIndexOffset: 100 })
       .addTo(this.mapa)
-      .bindTooltip('📍 Tu posición', { permanent: false, direction: 'top' });
+      .bindTooltip('Tu posición', { permanent: false, direction: 'top' });
 
     const iconoIncidente = L.divIcon({
       className: '',
@@ -529,7 +562,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
 
     this.marcadorIncidente = L.marker([latInc, lngInc], { icon: iconoIncidente })
       .addTo(this.mapa)
-      .bindTooltip(`🚨 Emergencia #${this.emergenciaActual.reporteId}`, { permanent: true, direction: 'top' });
+      .bindTooltip(`Emergencia #${this.emergenciaActual.reporteId}`, { permanent: true, direction: 'top' });
 
     this.rutaPolyline = L.polyline([[lat, lng], [latInc, lngInc]], {
       color: '#ff3b3b',
@@ -552,8 +585,8 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
     if (!this.emergenciaActual) return;
 
     this.isCalculandoRuta = true;
-    this.instruccionActual = '🔄 Calculando ruta por calles...';
-    this.instruccionIcono = '🔄';
+    this.instruccionActual = 'Calculando ruta por calles...';
+    this.instruccionIcono = '→';
     this.cdr.detectChanges();
 
     const lat1 = this.latitudUnidad;
@@ -628,8 +661,8 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
 
             console.log(`✅ Ruta calculada: ${this.distanciaRutaKm} km · ${this.duracionEstimada}`);
           } else {
-            this.instruccionActual = '⚠️ No se encontró ruta vial. Navega en línea recta.';
-            this.instruccionIcono = '⚠️';
+            this.instruccionActual = 'No se encontró ruta vial. Navega en línea recta.';
+            this.instruccionIcono = '!';
           }
           this.cdr.detectChanges();
         });
@@ -638,8 +671,8 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
         console.warn('Error OSRM:', err);
         this.ngZone.run(() => {
           this.isCalculandoRuta = false;
-          this.instruccionActual = '⚠️ Sin conexión al servidor de rutas. Modo línea recta activo.';
-          this.instruccionIcono = '⚠️';
+          this.instruccionActual = 'Sin conexión al servidor de rutas. Modo línea recta activo.';
+          this.instruccionIcono = '!';
           this.cdr.detectChanges();
         });
       }
@@ -692,7 +725,7 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
 
     const mapa: { [k: string]: string } = {
       'depart':                  'Comienza la ruta',
-      'arrive':                  '🚨 Llegaste al destino',
+      'arrive':                  'Llegaste al destino',
       'turn left':               'Gira a la izquierda',
       'turn right':              'Gira a la derecha',
       'turn slight left':        'Gira ligeramente a la izquierda',
@@ -721,21 +754,21 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
   }
 
   private iconoManeuver(maneuver: any): string {
-    if (!maneuver) return '➡️';
+    if (!maneuver) return '→';
     const tipo = maneuver.type || '';
     const mod = maneuver.modifier || '';
 
-    if (tipo === 'arrive') return '🚨';
-    if (tipo === 'depart') return '🚀';
+    if (tipo === 'arrive') return 'FIN';
+    if (tipo === 'depart') return '→';
     if (mod.includes('left') && mod.includes('sharp')) return '↩️';
     if (mod.includes('right') && mod.includes('sharp')) return '↪️';
     if (mod.includes('left') && mod.includes('slight')) return '↖️';
     if (mod.includes('right') && mod.includes('slight')) return '↗️';
     if (mod === 'left' || mod.includes('left')) return '⬅️';
-    if (mod === 'right' || mod.includes('right')) return '➡️';
-    if (mod === 'uturn') return '🔄';
-    if (tipo === 'roundabout' || tipo === 'rotary') return '🔵';
-    if (tipo === 'merge') return '🔀';
+    if (mod === 'right' || mod.includes('right')) return '→';
+    if (mod === 'uturn') return '↶';
+    if (tipo === 'roundabout' || tipo === 'rotary') return '○';
+    if (tipo === 'merge') return '↗';
     return '⬆️';
   }
 
@@ -764,8 +797,8 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
         this.ngZone.run(() => {
           this.unidadActual = { ...this.unidadActual, estado: 'EN_SITIO' };
           this.guardarUnidadActiva();
-          this.instruccionActual = '✅ Llegaste al destino. Procede con el protocolo de emergencia.';
-          this.instruccionIcono = '✅';
+          this.instruccionActual = 'Llegaste al destino. Procede con el protocolo de emergencia.';
+          this.instruccionIcono = 'FIN';
           if (this.recalcInterval) clearInterval(this.recalcInterval);
           this.cdr.detectChanges();
         });
@@ -788,12 +821,12 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
   }
 
   public confirmarFinalizarEmergencia(): void {
-    if (!this.formPersonal || this.formPersonal.trim() === '') {
+    if (!this.formPersonal || this.formPersonal.trim().length < 3) {
        alert('Es obligatorio reportar los nombres del personal involucrado para finalizar.');
        return;
     }
-    if (!this.formNovedades || this.formNovedades.trim() === '') {
-       alert('Es obligatorio reportar las novedades para finalizar.');
+    if (!this.formNovedades || this.formNovedades.trim().length < 10) {
+       alert('Describe las novedades del servicio con al menos 10 caracteres.');
        return;
     }
 
@@ -820,7 +853,8 @@ export class UnidadDashboardComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.ngZone.run(() => {
           this.isFinalizando = false;
-          this.finalizadoMensaje = '❌ Error al finalizar: ' + (err.error?.error || err.message);
+          this.finalizadoMensaje = 'Error al finalizar: '
+            + (err.error?.error || err.error?.message || err.message || 'No fue posible completar la operación.');
           this.cdr.detectChanges();
         });
       }

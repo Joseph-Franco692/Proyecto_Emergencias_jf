@@ -16,6 +16,7 @@ import tools.jackson.databind.JsonNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -37,6 +38,14 @@ public class EvidenceStorageService {
     @Value("${pocketbase.token:}")
     private String token;
 
+    @Value("${pocketbase.superuser-email:}")
+    private String pocketBaseSuperuserEmail;
+
+    @Value("${pocketbase.superuser-password:}")
+    private String pocketBaseSuperuserPassword;
+
+    private volatile String cachedAuthorization;
+
     public StoredEvidence store(EvidenciaDto file, String sha256, Long reporteId) throws Exception {
         return "pocketbase".equalsIgnoreCase(provider)
                 ? storeInPocketBase(file, sha256, reporteId)
@@ -48,7 +57,7 @@ public class EvidenceStorageService {
             requirePocketBaseConfiguration();
             return pocketBaseClient().get()
                     .uri("/api/files/{collection}/{recordId}/{filename}", collection, recordId, filename)
-                    .header(HttpHeaders.AUTHORIZATION, token)
+                    .header(HttpHeaders.AUTHORIZATION, pocketBaseAuthorization())
                     .retrieve()
                     .body(byte[].class);
         }
@@ -82,7 +91,7 @@ public class EvidenceStorageService {
 
         JsonNode record = pocketBaseClient().post()
                 .uri("/api/collections/{collection}/records", collection)
-                .header(HttpHeaders.AUTHORIZATION, token)
+                .header(HttpHeaders.AUTHORIZATION, pocketBaseAuthorization())
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(form)
                 .retrieve()
@@ -109,10 +118,45 @@ public class EvidenceStorageService {
     }
 
     private void requirePocketBaseConfiguration() {
-        if (token == null || token.isBlank()) {
+        boolean hasLegacyToken = token != null && !token.isBlank();
+        boolean hasServiceCredentials = pocketBaseSuperuserEmail != null
+                && !pocketBaseSuperuserEmail.isBlank()
+                && pocketBaseSuperuserPassword != null
+                && !pocketBaseSuperuserPassword.isBlank();
+        if (!hasLegacyToken && !hasServiceCredentials) {
             throw new IllegalStateException(
-                    "Falta POCKETBASE_TOKEN. Genere un token de superusuario en PocketBase y reinicie Spring Boot.");
+                    "Falta la credencial tÃ©cnica de PocketBase. Configure POCKETBASE_SUPERUSER_EMAIL y POCKETBASE_SUPERUSER_PASSWORD.");
         }
+    }
+
+    /**
+     * La instancia de PocketBase dentro de Docker tiene su propia base de datos.
+     * Por ello no reutilizamos a ciegas el token de una instalaciÃ³n local anterior:
+     * si existen credenciales tÃ©cnicas, se obtiene un token vÃ¡lido para esta instancia.
+     */
+    private String pocketBaseAuthorization() {
+        if (cachedAuthorization != null && !cachedAuthorization.isBlank()) {
+            return cachedAuthorization;
+        }
+
+        if (pocketBaseSuperuserEmail != null && !pocketBaseSuperuserEmail.isBlank()
+                && pocketBaseSuperuserPassword != null && !pocketBaseSuperuserPassword.isBlank()) {
+            JsonNode auth = pocketBaseClient().post()
+                    .uri("/api/collections/_superusers/auth-with-password")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                            "identity", pocketBaseSuperuserEmail,
+                            "password", pocketBaseSuperuserPassword
+                    ))
+                    .retrieve()
+                    .body(JsonNode.class);
+            String authToken = requiredText(auth, "token");
+            cachedAuthorization = "Bearer " + authToken;
+            return cachedAuthorization;
+        }
+
+        // Compatibilidad para instalaciones previas que ya usan un token vÃ¡lido.
+        return token.regionMatches(true, 0, "Bearer ", 0, 7) ? token : "Bearer " + token;
     }
 
     private String requiredText(JsonNode node, String field) {

@@ -17,7 +17,7 @@ export interface AppUser {
 
 @Injectable({ providedIn: "root" })
 export class AuthService {
-  private readonly API = "http://localhost:8081";
+  private readonly API = "";
   private currentUser$ = new BehaviorSubject<AppUser | null>(null);
 
   constructor(private http: HttpClient) {}
@@ -76,6 +76,18 @@ export class AuthService {
 
   verifyAccount(email: string, code: string): Observable<any> {
     return this.http.post(`${this.API}/api/auth/verify`, { email, code }).pipe(catchError(this.handleError));
+  }
+
+  requestPasswordReset(email: string): Observable<any> {
+    return this.http.post(`${this.API}/api/auth/forgot-password`, { email }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  resetPassword(token: string, password: string): Observable<any> {
+    return this.http.post(`${this.API}/api/auth/reset-password`, { token, password }).pipe(
+      catchError(this.handleError)
+    );
   }
 
   // ─── VINCULACIÓN A CÓDIGO DE ZONA ─────────────────────────────────────────────

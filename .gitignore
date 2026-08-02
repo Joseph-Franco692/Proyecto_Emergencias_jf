@@ -1,0 +1,6 @@
+.env.docker
+backups/
+contexto_*.txt
+**/target/
+**/node_modules/
+**/dist/

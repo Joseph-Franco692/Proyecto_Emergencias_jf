@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import java.util.Map;
@@ -71,6 +72,11 @@ public class UnidadBomberilController {
         return ResponseEntity.ok(unidadService.obtenerUnidadesDisponibles());
     }
 
+    @GetMapping("/estado-operativo")
+    public ResponseEntity<List<Map<String, Object>>> estadoOperativo() {
+        return ResponseEntity.ok(unidadService.obtenerEstadoOperativo());
+    }
+
     public static class ReporteFinalPayload {
         public String operador;
         public String personal;
@@ -81,12 +87,18 @@ public class UnidadBomberilController {
      * PUT /api/unidades/{id}/disponibilizar → libera la unidad y guarda la bitácora
      */
     @PutMapping("/{id}/disponibilizar")
-    public ResponseEntity<Map<String, Object>> disponibilizar(@PathVariable Long id, @RequestBody(required = false) ReporteFinalPayload payload) {
-        String operador = payload != null ? payload.operador : "Desconocido";
+    public ResponseEntity<Map<String, Object>> disponibilizar(
+            @PathVariable Long id,
+            @RequestBody(required = false) ReporteFinalPayload payload,
+            Authentication auth) {
+        String operador = auth.getPrincipal() instanceof Usuario usuario
+                ? usuario.getName()
+                : auth.getName();
         String personal = payload != null ? payload.personal : "Desconocido";
         String novedades = payload != null ? payload.novedades : "Sin novedades";
         
-        Map<String, Object> resultado = unidadService.disponibilizarUnidad(id, operador, personal, novedades);
+        Map<String, Object> resultado = unidadService.disponibilizarUnidad(
+                id, auth.getName(), operador, personal, novedades);
         return ResponseEntity.ok(resultado);
     }
 
@@ -94,6 +106,7 @@ public class UnidadBomberilController {
      * GET /api/unidades/reportes-finales → obtiene las bitácoras ordenadas
      */
     @GetMapping("/reportes-finales")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<com.bomberos.emergencias.models.BitacoraUnidad>> obtenerReportesFinales() {
         return ResponseEntity.ok(unidadService.obtenerBitacoras());
     }
@@ -102,14 +115,17 @@ public class UnidadBomberilController {
      * PUT /api/unidades/{id}/en-sitio → marca la unidad como EN_SITIO al llegar al lugar
      */
     @PutMapping("/{id}/en-sitio")
-    public ResponseEntity<Map<String, Object>> marcarEnSitio(@PathVariable Long id) {
-        Map<String, Object> resultado = unidadService.marcarEnSitio(id);
+    public ResponseEntity<Map<String, Object>> marcarEnSitio(
+            @PathVariable Long id,
+            Authentication auth) {
+        Map<String, Object> resultado = unidadService.marcarEnSitio(id, auth.getName());
         return ResponseEntity.ok(resultado);
     }
     /**
      * POST /api/unidades → crea una nueva unidad
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UnidadBomberil> crearUnidad(@RequestBody UnidadBomberil unidad) {
         return ResponseEntity.ok(unidadService.crearUnidad(unidad));
     }
@@ -118,6 +134,7 @@ public class UnidadBomberilController {
      * DELETE /api/unidades/{id} → elimina una unidad
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> eliminarUnidad(@PathVariable Long id) {
         unidadService.eliminarUnidad(id);
         Map<String, Object> respuesta = new java.util.HashMap<>();
@@ -129,6 +146,7 @@ public class UnidadBomberilController {
      * PUT /api/unidades/{id}/estado → fuerza un cambio de estado manualmente
      */
     @PutMapping("/{id}/estado")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UnidadBomberil> cambiarEstado(@PathVariable Long id, @RequestParam com.bomberos.emergencias.models.EstadoUnidad estado) {
         return ResponseEntity.ok(unidadService.cambiarEstadoManual(id, estado));
     }

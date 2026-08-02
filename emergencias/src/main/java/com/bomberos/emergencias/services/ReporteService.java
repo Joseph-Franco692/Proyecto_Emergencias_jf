@@ -3,14 +3,19 @@ package com.bomberos.emergencias.services;
 import com.bomberos.emergencias.models.EvidenciaDto;
 import com.bomberos.emergencias.models.EvidenciaMultimedia;
 import com.bomberos.emergencias.models.ReporteCiudadano;
+import com.bomberos.emergencias.models.EstadoReporte;
 import com.bomberos.emergencias.repositories.EvidenciaMultimediaRepository;
 import com.bomberos.emergencias.repositories.ReporteCiudadanoRepository;
+import com.bomberos.emergencias.repositories.BitacoraUnidadRepository;
+import com.bomberos.emergencias.repositories.UnidadBomberilRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -36,6 +41,39 @@ public class ReporteService {
     @Autowired
     private EvidenceStorageService evidenceStorageService;
 
+    @Autowired
+    private BitacoraUnidadRepository bitacoraRepository;
+
+    @Autowired
+    private UnidadBomberilRepository unidadRepository;
+
+    /**
+     * Compatibilidad con registros creados antes de incorporar el estado
+     * persistente. Se ejecuta una sola vez al iniciar cada réplica y es
+     * idempotente.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void normalizarEstadosLegacy() {
+        List<ReporteCiudadano> pendientes = reporteRepository.findAll().stream()
+                .filter(reporte -> reporte.getEstado() == null)
+                .toList();
+        for (ReporteCiudadano reporte : pendientes) {
+            if (!unidadRepository.findByReporteAsignadoId(reporte.getId()).isEmpty()) {
+                reporte.setEstado(EstadoReporte.EN_ATENCION);
+                reporte.setFechaAtencion(reporte.getFechaReporte());
+            } else if (bitacoraRepository.existsByReporteId(reporte.getId())) {
+                reporte.setEstado(EstadoReporte.ATENDIDO);
+            } else {
+                reporte.setEstado(EstadoReporte.PENDIENTE);
+            }
+        }
+        if (!pendientes.isEmpty()) {
+            reporteRepository.saveAll(pendientes);
+            log.info("Estados normalizados para {} reportes históricos", pendientes.size());
+        }
+    }
+
     @Transactional
     public ReporteCiudadano registrarYNotificar(ReporteCiudadano reporte) {
         ReporteCiudadano guardado = reporteRepository.save(reporte);
@@ -49,6 +87,7 @@ public class ReporteService {
         payloadMap.put("iaLabel", guardado.getIaLabel() != null ? guardado.getIaLabel() : "");
         payloadMap.put("iaConfidence", guardado.getIaConfidence() != null ? guardado.getIaConfidence().toString() : "0");
         payloadMap.put("fechaReporte", guardado.getFechaReporte() != null ? guardado.getFechaReporte().toString() : "");
+        payloadMap.put("estado", guardado.getEstado() != null ? guardado.getEstado().name() : "PENDIENTE");
 
         log.info("Transmitiendo nuevo reporte por WebSocket: {}", payloadMap);
         messagingTemplate.convertAndSend("/topic/nuevos-reportes", (Object) payloadMap);

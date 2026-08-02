@@ -3,8 +3,14 @@
   <header class="reportar-header">
     <div class="header-content">
       <div class="header-left">
+        <div class="header-brand">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C10.5 4.5 8 7 8 10a4 4 0 0 0 8 0c0-3-2.5-5.5-4-8z" fill="#ff4444" stroke="none"/>
+            <path d="M12 6c-.5 1.5-2 3-2 4.5a2 2 0 0 0 4 0C14 9 12.5 7.5 12 6z" fill="#ffaa44" stroke="none"/>
+            <path d="M5 20h14M7 20v-5h10v5" stroke="#ff6644" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
         <h1 class="header-title">
-          <span class="icon-fire">🚒</span>
           Ayuda ante emergencias
         </h1>
         <p class="header-subtitle">Canal ciudadano de Gestión Bomberil</p>
@@ -16,7 +22,6 @@
         </div>
       </div>
       <a routerLink="/premium" class="premium-entry">
-        <span>🛡️</span>
         <span><b>Plan Premium</b><small>Prevención IoT para tu establecimiento</small></span>
       </a>
     </div>
@@ -38,7 +43,9 @@
               [class.selected]="tipoSeleccionado === t.nombre"
               (click)="seleccionarTipo(t.nombre)"
             >
-              <div class="type-emoji">{{ t.emoji }}</div>
+              <span class="type-icon">
+                {{ t.nombre === 'Incendio' ? '🔥' : t.nombre === 'Accidente' ? '🚑' : t.nombre === 'Gas / QuÃ­m.' ? '⚠️' : t.nombre === 'Derrumbe' ? '🧱' : t.nombre === 'InundaciÃ³n' ? '🌊' : '📍' }}
+              </span>
               <span class="type-label">{{ t.nombre }}</span>
             </div>
           </div>
@@ -56,9 +63,8 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">📍 Ubicación de la Emergencia</label>
+            <label class="form-label">Ubicación de la emergencia</label>
             <div class="gps-info-card">
-              <div class="gps-icon">📍</div>
               <div class="gps-details">
                 <div class="gps-label">Ubicación detectada</div>
                 <div class="gps-coords">
@@ -109,7 +115,6 @@
           <p class="section-desc">Las imágenes y videos son cruciales para una respuesta rápida</p>
 
           <div class="upload-zone" (click)="triggerFileInput()" [class.has-files]="selectedFilesPreviews.length > 0">
-            <div class="upload-icon">📷</div>
             <div class="upload-text">
               <div class="upload-title">Cargar foto o video</div>
               <div class="upload-subtitle">Haz clic o arrastra archivos aquí</div>
@@ -131,7 +136,7 @@
             <div class="media-grid">
               <div class="media-item" *ngFor="let fileInfo of selectedFilesPreviews; let i = index">
                 <img *ngIf="fileInfo.isImage" [src]="fileInfo.url" alt="Evidencia" class="media-thumb">
-                <div *ngIf="!fileInfo.isImage" class="media-video-icon">🎥</div>
+                <div *ngIf="!fileInfo.isImage" class="media-video-icon">Video</div>
                 <button class="remove-btn" (click)="removeFile(i); $event.stopPropagation()">×</button>
               </div>
               <button 
@@ -204,7 +209,6 @@
           </div>
 
           <div class="warning-box">
-            <span class="warning-icon">⚠️</span>
             <span class="warning-text">Confirmas que esta es una emergencia real. Los reportes falsos pueden ser penalizados legalmente.</span>
           </div>
 
@@ -229,12 +233,6 @@
             <div class="review-section">
               <div class="review-title">Tipo de Emergencia</div>
               <div class="review-value danger">
-                <span *ngIf="tipoSeleccionado === 'Incendio'">🔥</span>
-                <span *ngIf="tipoSeleccionado === 'Accidente'">🚗</span>
-                <span *ngIf="tipoSeleccionado === 'Gas / Quím.'">⚠️</span>
-                <span *ngIf="tipoSeleccionado === 'Derrumbe'">🏗</span>
-                <span *ngIf="tipoSeleccionado === 'Inundación'">💧</span>
-                <span *ngIf="tipoSeleccionado === 'Otro'">🆘</span>
                 {{ tipoSeleccionado }}
               </div>
             </div>
@@ -273,7 +271,6 @@
           </div>
 
           <div class="info-box success">
-            <span class="info-icon">📡</span>
             <span class="info-text">Se enviará al servidor en tiempo real. La central operativa será notificada inmediatamente vía WebSocket.</span>
           </div>
 
@@ -287,7 +284,7 @@
               (click)="enviarReporte()"
             >
               <span *ngIf="isSubmitting" class="spinner">⟳</span>
-              <span *ngIf="!isSubmitting">🚒 ENVIAR EMERGENCIA AHORA</span>
+              <span *ngIf="!isSubmitting">ENVIAR EMERGENCIA AHORA</span>
             </button>
           </div>
         </div>
@@ -296,15 +293,9 @@
       <!-- SCREEN 5: Success -->
       <div class="form-section" [class.active]="currentScreen === 5">
         <div class="section-content success-content">
-          <div class="success-icon">✅</div>
+          <div class="success-icon">✓</div>
           <h2 class="success-title">¡REPORTE ENVIADO!</h2>
           <p class="success-desc">Tu reporte fue recibido correctamente por la central operativa.<br>Los bomberos han sido notificados y están en camino.</p>
-
-          <div class="ticket-box">
-            <div class="ticket-label">Tu número de seguimiento</div>
-            <div class="ticket-id">{{ ticketId }}</div>
-            <div class="ticket-hint">Guarda este código para consultar el estado de tu reporte</div>
-          </div>
 
           <div class="progress-steps">
             <div class="step-item done">
@@ -318,7 +309,7 @@
 
           <div class="form-actions">
             <button class="btn btn-primary" style="background: linear-gradient(135deg, #22c55e, #16a34a);" (click)="resetearFormulario()">
-              ➕ Reportar otra emergencia
+              Reportar otra emergencia
             </button>
           </div>
         </div>

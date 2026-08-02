@@ -1,0 +1,170 @@
+{
+  "input": "C:\\Users\\josep\\OneDrive\\Documentos\\PROYECTO_EMERGENCIAS\\documentacion\\PROYECTO_FIREFIGHTER_BASE.docx",
+  "fonts_by_char_count": {
+    "Consolas": 3859
+  },
+  "direct_run_formatting_runs": 992,
+  "direct_paragraph_formatting_paragraphs": 206,
+  "heading_like_paragraphs_not_heading_style": [
+    {
+      "para_index": 7,
+      "text": "                                    PERIODO \u00a0 \u00a0 \u00a0 \u00a0 \t\t: \u00a0 \u00a0 \u00a0    2026 Abril\u2013 Agosto 2026",
+      "style": "Normal"
+    },
+    {
+      "para_index": 8,
+      "text": "ASIGNATURA \u00a0 \u00a0 \t\u00a0 \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 :\u00a0 \u00a0 \u00a0 \u00a0 \u00a0 Aplicaciones Distribuidas",
+      "style": "Normal"
+    },
+    {
+      "para_index": 9,
+      "text": "TEMA\t: \tProyecto",
+      "style": "Normal"
+    },
+    {
+      "para_index": 10,
+      "text": "ESTUDIANTE\t \t            : \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 Joseph Franco",
+      "style": "Normal"
+    },
+    {
+      "para_index": 11,
+      "text": "                                             NIVEL-PARALELO               :\u00a0 \u00a0 \t7mo",
+      "style": "Normal"
+    },
+    {
+      "para_index": 12,
+      "text": "DOCENTE \u00a0 \u00a0 \u00a0 \t \t            : \u00a0 \u00a0 \u00a0 \u00a0 \u00a0 Ing. Geovanny Brito",
+      "style": "Normal"
+    },
+    {
+      "para_index": 13,
+      "text": "FECHA DE ENTREGA \u00a0 \u00a0    \u00a0 : \u00a0 \u00a0 \u00a0 \t23/06/2026",
+      "style": "Normal"
+    },
+    {
+      "para_index": 20,
+      "text": "SANTO DOMINGO - ECUADOR",
+      "style": "Normal"
+    },
+    {
+      "para_index": 24,
+      "text": "\u00cdNDICE",
+      "style": "Normal"
+    },
+    {
+      "para_index": 77,
+      "text": "Objetivo General",
+      "style": "List Paragraph"
+    },
+    {
+      "para_index": 80,
+      "text": "Objetivos Espec\u00edficos",
+      "style": "List Paragraph"
+    },
+    {
+      "para_index": 110,
+      "text": "Algoritmo 1 ",
+      "style": "Caption"
+    },
+    {
+      "para_index": 128,
+      "text": "Figura 2 ",
+      "style": "Caption"
+    },
+    {
+      "para_index": 137,
+      "text": "Algoritmo 2 ",
+      "style": "Caption"
+    },
+    {
+      "para_index": 161,
+      "text": "Algoritmo 3 ",
+      "style": "Caption"
+    },
+    {
+      "para_index": 194,
+      "text": "Algoritmo 4 ",
+      "style": "Caption"
+    },
+    {
+      "para_index": 215,
+      "text": "Figura 4 ",
+      "style": "Caption"
+    },
+    {
+      "para_index": 221,
+      "text": "Algoritmo 5",
+      "style": "Caption"
+    },
+    {
+      "para_index": 243,
+      "text": "Tabla 1",
+      "style": "Caption"
+    },
+    {
+      "para_index": 246,
+      "text": "Figura 5",
+      "style": "Caption"
+    }
+  ],
+  "examples": {
+    "direct_paragraph_formatting": [
+      {
+        "para_index": 1,
+        "text": "\t",
+        "style": "Normal"
+      },
+      {
+        "para_index": 2,
+        "text": "",
+        "style": "Normal"
+      },
+      {
+        "para_index": 3,
+        "text": "",
+        "style": "Normal"
+      },
+      {
+        "para_index": 4,
+        "text": "",
+        "style": "Normal"
+      },
+      {
+        "para_index": 5,
+        "text": "",
+        "style": "Normal"
+      }
+    ],
+    "direct_run_formatting": [
+      {
+        "para_index": 7,
+        "run_text": "                                    ",
+        "style": "Normal"
+      },
+      {
+        "para_index": 7,
+        "run_text": "PERIODO",
+        "style": "Normal"
+      },
+      {
+        "para_index": 7,
+        "run_text": " \u00a0 \u00a0 \u00a0 \u00a0 ",
+        "style": "Normal"
+      },
+      {
+        "para_index": 7,
+        "run_text": "\t",
+        "style": "Normal"
+      },
+      {
+        "para_index": 7,
+        "run_text": "\t: \u00a0 \u00a0 \u00a0 ",
+        "style": "Normal"
+      }
+    ]
+  },
+  "notes": [
+    "Direct formatting is not always wrong, but it often causes inconsistent output when templates change.",
+    "Heading-like paragraphs not using Heading styles can break TOC and accessibility."
+  ]
+}

@@ -2,6 +2,7 @@ package com.bomberos.emergencias.services;
 
 import com.bomberos.emergencias.models.BitacoraUnidad;
 import com.bomberos.emergencias.models.EstadoUnidad;
+import com.bomberos.emergencias.models.EstadoReporte;
 import com.bomberos.emergencias.models.ReporteCiudadano;
 import com.bomberos.emergencias.models.LecturaIot;
 import com.bomberos.emergencias.models.SesionIot;
@@ -78,7 +79,7 @@ public class UnidadBomberilService {
 
     @Transactional
     public UnidadBomberil activarOperador(Long unidadId, String email, String nombre) {
-        UnidadBomberil unidad = unidadRepository.findById(unidadId)
+        UnidadBomberil unidad = unidadRepository.findWithLockById(unidadId)
                 .orElseThrow(() -> new RuntimeException("Unidad no encontrada con ID: " + unidadId));
 
         boolean otroOperadorActivo = unidad.getOperadorEmail() != null
@@ -102,7 +103,7 @@ public class UnidadBomberilService {
 
     @Transactional
     public UnidadBomberil registrarHeartbeat(Long unidadId, String email) {
-        UnidadBomberil unidad = unidadRepository.findById(unidadId)
+        UnidadBomberil unidad = unidadRepository.findWithLockById(unidadId)
                 .orElseThrow(() -> new RuntimeException("Unidad no encontrada con ID: " + unidadId));
         if (unidad.getOperadorEmail() == null
                 || !email.equalsIgnoreCase(unidad.getOperadorEmail())) {
@@ -114,7 +115,7 @@ public class UnidadBomberilService {
 
     @Transactional
     public void desactivarOperador(Long unidadId, String email) {
-        UnidadBomberil unidad = unidadRepository.findById(unidadId)
+        UnidadBomberil unidad = unidadRepository.findWithLockById(unidadId)
                 .orElseThrow(() -> new RuntimeException("Unidad no encontrada con ID: " + unidadId));
         if (unidad.getEstado() != EstadoUnidad.DISPONIBLE) {
             throw new RuntimeException("No se puede abandonar una unidad durante una emergencia activa.");
@@ -135,13 +136,23 @@ public class UnidadBomberilService {
      */
     @Transactional
     public Map<String, Object> despacharUnidades(Long reporteId, List<Long> unidadIds) {
-        ReporteCiudadano reporte = reporteRepository.findById(reporteId)
+        if (unidadIds == null || unidadIds.isEmpty()) {
+            throw new RuntimeException("Selecciona al menos una unidad para despachar.");
+        }
+        if (unidadIds.stream().distinct().count() != unidadIds.size()) {
+            throw new RuntimeException("La selección contiene unidades duplicadas.");
+        }
+
+        ReporteCiudadano reporte = reporteRepository.findWithLockById(reporteId)
                 .orElseThrow(() -> new RuntimeException("Reporte no encontrado con ID: " + reporteId));
+        if (reporte.getEstado() == EstadoReporte.ATENDIDO) {
+            throw new RuntimeException("El reporte ya fue atendido y no puede volver a ser asignado.");
+        }
 
         List<Map<String, Object>> unidadesDespachadas = new ArrayList<>();
 
         for (Long unidadId : unidadIds) {
-            UnidadBomberil unidad = unidadRepository.findById(unidadId)
+            UnidadBomberil unidad = unidadRepository.findWithLockById(unidadId)
                     .orElseThrow(() -> new RuntimeException("Unidad no encontrada con ID: " + unidadId));
 
             if (unidad.getEstado() != EstadoUnidad.DISPONIBLE) {
@@ -168,6 +179,14 @@ public class UnidadBomberilService {
             unidadesDespachadas.add(unidadPayload);
         }
 
+        if (reporte.getEstado() == null || reporte.getEstado() == EstadoReporte.PENDIENTE) {
+            reporte.setEstado(EstadoReporte.EN_ATENCION);
+            if (reporte.getFechaAtencion() == null) {
+                reporte.setFechaAtencion(LocalDateTime.now());
+            }
+            reporteRepository.save(reporte);
+        }
+
         // Payload de notificación para el dashboard central y el módulo de unidades
         Map<String, Object> notificacion = new HashMap<>();
         notificacion.put("tipo", "DESPACHO");
@@ -177,6 +196,7 @@ public class UnidadBomberilService {
         notificacion.put("descripcion", reporte.getDescripcion());
         notificacion.put("celularReportero", reporte.getCelularReportero() != null ? reporte.getCelularReportero() : "");
         notificacion.put("unidades", unidadesDespachadas);
+        notificacion.put("reporteEstado", EstadoReporte.EN_ATENCION.name());
         log.info("--- DIFUNDIENDO DESPACHO VIA WEBSOCKET: {} ---", notificacion);
 
         // Difundir evento al topic de unidades en tiempo real
@@ -194,12 +214,33 @@ public class UnidadBomberilService {
      * Libera una unidad (EN_RUTA o EN_SITIO → DISPONIBLE) y cierra el reporte si es la última en retirarse.
      */
     @Transactional
-    public Map<String, Object> disponibilizarUnidad(Long unidadId, String operador, String personal, String novedades) {
-        UnidadBomberil unidad = unidadRepository.findById(unidadId)
+    public Map<String, Object> disponibilizarUnidad(
+            Long unidadId,
+            String operadorEmail,
+            String operador,
+            String personal,
+            String novedades) {
+        UnidadBomberil unidad = unidadRepository.findWithLockById(unidadId)
                 .orElseThrow(() -> new RuntimeException("Unidad no encontrada con ID: " + unidadId));
+        if (unidad.getOperadorEmail() == null
+                || operadorEmail == null
+                || !operadorEmail.equalsIgnoreCase(unidad.getOperadorEmail())) {
+            throw new RuntimeException("Solo el operador vinculado puede finalizar esta emergencia.");
+        }
 
         ReporteCiudadano reporteAnterior = unidad.getReporteAsignado();
-        Long reporteId = reporteAnterior != null ? reporteAnterior.getId() : null;
+        if (reporteAnterior == null
+                || (unidad.getEstado() != EstadoUnidad.EN_RUTA && unidad.getEstado() != EstadoUnidad.EN_SITIO)) {
+            throw new RuntimeException("La unidad no tiene una emergencia activa para finalizar.");
+        }
+        validarReporteFinal(personal, novedades);
+
+        Long reporteId = reporteAnterior.getId();
+        // Serializa el cierre de todas las unidades del mismo reporte. Así, si
+        // dos operadores terminan casi simultáneamente, exactamente uno detecta
+        // que fue la última unidad y persiste el cierre del incidente.
+        reporteAnterior = reporteRepository.findWithLockById(reporteId)
+                .orElseThrow(() -> new RuntimeException("El reporte asignado ya no existe."));
         cerrarSesionIotActiva(reporteId, unidadId);
 
         // Crear la bitácora final
@@ -228,9 +269,9 @@ public class UnidadBomberilService {
             List<UnidadBomberil> unidadesRestantes = unidadRepository.findByReporteAsignadoId(reporteId);
             if (unidadesRestantes.isEmpty()) {
                 // No quedan unidades asignadas: cerrar el incidente
-                reporteAnterior.setIncidente(null); // Evitar circular JSON
-                // En este sistema guardamos el estado de "CERRADO" sólo en WS
-                // (la entidad ReporteCiudadano no tiene campo estado todavía)
+                reporteAnterior.setEstado(EstadoReporte.ATENDIDO);
+                reporteAnterior.setFechaCierre(LocalDateTime.now());
+                reporteRepository.save(reporteAnterior);
                 reporteCerrado = true;
                 log.info("--- INCIDENTE #{} SIN UNIDADES: MARCANDO COMO ATENDIDO ---", reporteId);
             }
@@ -249,6 +290,8 @@ public class UnidadBomberilService {
         notificacion.put("unidad", unidadPayload);
         notificacion.put("reporteAnteriorId", reporteId);
         notificacion.put("reporteCerrado", reporteCerrado);
+        notificacion.put("reporteEstado",
+                reporteCerrado ? EstadoReporte.ATENDIDO.name() : EstadoReporte.EN_ATENCION.name());
 
         log.info("--- DIFUNDIENDO LIBERACION VIA WEBSOCKET: {} ---", notificacion);
         messagingTemplate.convertAndSend("/topic/unidades-estado", (Object) notificacion);
@@ -259,6 +302,8 @@ public class UnidadBomberilService {
         respuesta.put("estadoNuevo", EstadoUnidad.DISPONIBLE.name());
         respuesta.put("reporteAnteriorId", reporteId);
         respuesta.put("reporteCerrado", reporteCerrado);
+        respuesta.put("reporteEstado",
+                reporteCerrado ? EstadoReporte.ATENDIDO.name() : EstadoReporte.EN_ATENCION.name());
         return respuesta;
     }
 
@@ -317,9 +362,17 @@ public class UnidadBomberilService {
      * Actualiza el estado de una unidad a EN_SITIO cuando el camión confirma llegada.
      */
     @Transactional
-    public Map<String, Object> marcarEnSitio(Long unidadId) {
-        UnidadBomberil unidad = unidadRepository.findById(unidadId)
+    public Map<String, Object> marcarEnSitio(Long unidadId, String operadorEmail) {
+        UnidadBomberil unidad = unidadRepository.findWithLockById(unidadId)
                 .orElseThrow(() -> new RuntimeException("Unidad no encontrada: " + unidadId));
+        if (unidad.getOperadorEmail() == null
+                || operadorEmail == null
+                || !operadorEmail.equalsIgnoreCase(unidad.getOperadorEmail())) {
+            throw new RuntimeException("Solo el operador vinculado puede confirmar la llegada.");
+        }
+        if (unidad.getEstado() != EstadoUnidad.EN_RUTA || unidad.getReporteAsignado() == null) {
+            throw new RuntimeException("La unidad no está en ruta hacia una emergencia activa.");
+        }
 
         unidad.setEstado(EstadoUnidad.EN_SITIO);
         unidadRepository.save(unidad);
@@ -329,6 +382,7 @@ public class UnidadBomberilService {
         payload.put("nombre", unidad.getNombre());
         payload.put("estado", EstadoUnidad.EN_SITIO.name());
         payload.put("tipo", "LLEGADA_SITIO");
+        payload.put("reporteId", unidad.getReporteAsignado().getId());
 
         Map<String, Object> notificacion = new HashMap<>();
         notificacion.put("tipo", "LLEGADA_SITIO");
@@ -370,6 +424,17 @@ public class UnidadBomberilService {
      */
     @Transactional
     public UnidadBomberil crearUnidad(UnidadBomberil unidad) {
+        if (unidad == null
+                || unidad.getNombre() == null
+                || !unidad.getNombre().trim().matches("[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9' .-]{2,50}")) {
+            throw new RuntimeException("Ingresa un nombre de unidad válido de 2 a 50 caracteres.");
+        }
+        if (unidad.getTipo() == null
+                || !unidad.getTipo().trim().matches("[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9' /.-]{2,80}")) {
+            throw new RuntimeException("Ingresa un tipo de unidad válido de 2 a 80 caracteres.");
+        }
+        unidad.setNombre(unidad.getNombre().trim());
+        unidad.setTipo(unidad.getTipo().trim());
         unidad.setEstado(EstadoUnidad.DISPONIBLE);
         unidad.setReporteAsignado(null);
         UnidadBomberil guardada = unidadRepository.save(unidad);
@@ -382,8 +447,11 @@ public class UnidadBomberilService {
      */
     @Transactional
     public void eliminarUnidad(Long id) {
-        UnidadBomberil unidad = unidadRepository.findById(id)
+        UnidadBomberil unidad = unidadRepository.findWithLockById(id)
                 .orElseThrow(() -> new RuntimeException("Unidad no encontrada con ID: " + id));
+        if (unidad.getReporteAsignado() != null || unidad.getEstado() != EstadoUnidad.DISPONIBLE) {
+            throw new RuntimeException("No se puede eliminar una unidad durante una emergencia activa.");
+        }
         unidadRepository.delete(unidad);
         difundirActualizacionGeneral();
     }
@@ -393,24 +461,49 @@ public class UnidadBomberilService {
     }
 
     /**
+     * Vista segura y sin relaciones JPA circulares para el tablero central.
+     */
+    public List<Map<String, Object>> obtenerEstadoOperativo() {
+        LocalDateTime limite = LocalDateTime.now().minusSeconds(SEGUNDOS_PRESENCIA_OPERADOR);
+        return unidadRepository.findAll().stream().map(unidad -> {
+            Map<String, Object> estado = new HashMap<>();
+            estado.put("id", unidad.getId());
+            estado.put("nombre", unidad.getNombre());
+            estado.put("tipo", unidad.getTipo());
+            estado.put("estado", unidad.getEstado().name());
+            estado.put("operador", unidad.getOperadorNombre() != null ? unidad.getOperadorNombre() : "");
+            estado.put("operadorConectado",
+                    unidad.getOperadorUltimoHeartbeat() != null
+                            && unidad.getOperadorUltimoHeartbeat().isAfter(limite));
+            estado.put("reporteId",
+                    unidad.getReporteAsignado() != null ? unidad.getReporteAsignado().getId() : null);
+            return estado;
+        }).toList();
+    }
+
+    /**
      * Cambiar manualmente el estado de una unidad (Forzado desde Central)
      */
     @Transactional
     public UnidadBomberil cambiarEstadoManual(Long id, EstadoUnidad nuevoEstado) {
-        UnidadBomberil unidad = unidadRepository.findById(id)
+        UnidadBomberil unidad = unidadRepository.findWithLockById(id)
                 .orElseThrow(() -> new RuntimeException("Unidad no encontrada con ID: " + id));
-        
+
+        if (nuevoEstado == null) {
+            throw new RuntimeException("Selecciona un estado válido.");
+        }
+        if (nuevoEstado == EstadoUnidad.DISPONIBLE && unidad.getReporteAsignado() != null) {
+            throw new RuntimeException(
+                    "La unidad tiene una emergencia activa. El operador debe finalizarla y registrar su bitácora.");
+        }
+        if (nuevoEstado != EstadoUnidad.DISPONIBLE && unidad.getReporteAsignado() == null) {
+            throw new RuntimeException(
+                    "No se puede poner una unidad en ruta o en sitio sin un reporte asignado.");
+        }
+
         unidad.setEstado(nuevoEstado);
         if (nuevoEstado == EstadoUnidad.DISPONIBLE) {
-            unidad.setReporteAsignado(null); // Liberar si se pone disponible
-            
-            // Notificar al dashboard de la unidad que ha sido liberada
-            Map<String, Object> liberacionEvent = new HashMap<>();
-            liberacionEvent.put("tipo", "LIBERACION");
-            Map<String, Object> uMap = new HashMap<>();
-            uMap.put("id", unidad.getId());
-            liberacionEvent.put("unidad", uMap);
-            messagingTemplate.convertAndSend("/topic/unidades-estado", (Object) liberacionEvent);
+            unidad.setReporteAsignado(null);
         }
         UnidadBomberil actualizada = unidadRepository.save(unidad);
         difundirActualizacionGeneral();
@@ -432,5 +525,16 @@ public class UnidadBomberilService {
                 && unidad.getOperadorUltimoHeartbeat().isAfter(
                         LocalDateTime.now().minusSeconds(SEGUNDOS_PRESENCIA_OPERADOR)
                 );
+    }
+
+    private void validarReporteFinal(String personal, String novedades) {
+        String personalNormalizado = personal != null ? personal.trim() : "";
+        String novedadesNormalizadas = novedades != null ? novedades.trim() : "";
+        if (personalNormalizado.length() < 3 || personalNormalizado.length() > 500) {
+            throw new RuntimeException("El personal involucrado debe contener entre 3 y 500 caracteres.");
+        }
+        if (novedadesNormalizadas.length() < 10 || novedadesNormalizadas.length() > 5000) {
+            throw new RuntimeException("Las novedades deben contener entre 10 y 5000 caracteres.");
+        }
     }
 }

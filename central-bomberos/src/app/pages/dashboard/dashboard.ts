@@ -4,7 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router, RouterModule } from '@angular/router'; 
 import { FormsModule } from '@angular/forms';
 import { WebsocketService } from '../../services/websocket';
-import { Subscription } from 'rxjs';
+import { Subscription, timeout } from 'rxjs';
 import { AuthService, AppUser } from '../../services/auth.service';
 import * as L from 'leaflet';
 import { ViewEncapsulation } from '@angular/core';
@@ -37,16 +37,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     queueSize: 0
   };
 
-  private API_URL = 'http://localhost:8081/api/reportes';
+  private API_URL = '/api/reportes';
   private clockInterval: any;
   private threadInterval: any;
   private metricsInterval: any;
+  private reportesSyncInterval: any;
+  public adminNotice: string = '';
+  public unidadesPorReporte: Record<number, any[]> = {};
 
   // CRUD Unidades
   public showUnidadesModal: boolean = false;
   public listaUnidades: any[] = [];
   public nuevaUnidad = { nombre: '', tipo: '' };
-  private UNIDADES_API_URL = 'http://localhost:8081/api/unidades';
+  private UNIDADES_API_URL = '/api/unidades';
 
   // Reportes Finales (Bitácoras)
   public showReportesModal: boolean = false;
@@ -67,11 +70,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public aiMessages: any[] = [
     {
       sender: 'ai',
-      text: '👋 ¡Hola! Soy tu <strong>Copiloto Operativo IA</strong>. Mi alcance está limitado a emergencias, reportes, unidades, operadores, despachos, bitácoras y monitoreo IoT de este sistema.',
+      text: 'Hola. Soy tu <strong>Copiloto Operativo IA</strong>. Puedo ayudarte con emergencias, reportes, unidades, operadores, despachos, bitácoras y monitoreo IoT de este sistema.',
       time: new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
     }
   ];
-  private AI_URL = 'http://localhost:8081/api/ai/chat';
+  private AI_URL = '/api/ai/chat';
 
   // Usuario actual
   public currentUser$: any;
@@ -94,7 +97,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.iniciarMapa();
-    this.cargarHistorial();
+    this.cargarHistorial(false);
     this.iniciarReloj();
     this.iniciarMonitoreoHilos();
     this.iniciarMetricasSimuladas();
@@ -149,6 +152,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.wsService.escucharUnidadesEstado().subscribe({
       next: (evento) => {
+        if (evento?.tipo === 'DESPACHO') {
+          this.ngZone.run(() => {
+            this.actualizarEstadoLocal(Number(evento.reporteId), 'EN_ATENCION');
+            this.cargarEstadoOperativo();
+          });
+        }
+        if (evento?.tipo === 'LLEGADA_SITIO') {
+          this.ngZone.run(() => this.cargarEstadoOperativo());
+        }
+        if (evento?.tipo === 'LIBERACION') {
+          this.ngZone.run(() => {
+            if (evento.reporteCerrado) {
+              this.notificarCierre(Number(evento.reporteAnteriorId));
+            }
+            this.cargarHistorial(false);
+            this.cargarEstadoOperativo();
+          });
+        }
         if (evento?.tipo === 'ACTUALIZACION_INVENTARIO' && this.showUnidadesModal) {
           this.ngZone.run(() => {
             this.cargarUnidades();
@@ -161,6 +182,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       }
     });
+
+    // Respaldo distribuido: con dos réplicas el broker STOMP es local a cada
+    // proceso. PostgreSQL se consulta periódicamente para que el tablero
+    // converja aunque el evento haya sido publicado por la otra réplica.
+    this.reportesSyncInterval = setInterval(() => {
+      this.cargarHistorial(true);
+      this.cargarEstadoOperativo();
+    }, 3000);
+    this.cargarEstadoOperativo();
   }
 
 
@@ -174,6 +204,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.clockInterval) clearInterval(this.clockInterval);
     if (this.threadInterval) clearInterval(this.threadInterval);
     if (this.metricsInterval) clearInterval(this.metricsInterval);
+    if (this.reportesSyncInterval) clearInterval(this.reportesSyncInterval);
   }
 
   private iniciarReloj(): void {
@@ -231,17 +262,80 @@ export class DashboardComponent implements OnInit, OnDestroy {
     setTimeout(() => this.mapa.invalidateSize(), 500);
   }
 
-  private cargarHistorial(): void {
+  private cargarHistorial(notificarCambios: boolean = false): void {
     this.http.get<any[]>(this.API_URL).subscribe({
       next: (historial) => {
         this.ngZone.run(() => {
-          this.listaReportes = historial.reverse().filter(rep => !localStorage.getItem('closed_report_' + rep.id));
-          this.cdr.detectChanges(); 
+          const activosAnteriores = new Set(this.listaReportes.map(rep => Number(rep.id)));
+          const ordenados = [...historial].sort((a, b) =>
+            new Date(b.fechaReporte || 0).getTime() - new Date(a.fechaReporte || 0).getTime());
+          const activos = ordenados.filter(rep => rep.estado !== 'ATENDIDO');
+
+          if (notificarCambios) {
+            ordenados
+              .filter(rep => rep.estado === 'ATENDIDO' && activosAnteriores.has(Number(rep.id)))
+              .forEach(rep => this.notificarCierre(Number(rep.id)));
+          }
+
+          const idsActivos = new Set(activos.map(rep => Number(rep.id)));
+          this.markersMap.forEach((marker, id) => {
+            if (!idsActivos.has(id)) {
+              this.mapa.removeLayer(marker);
+              this.markersMap.delete(id);
+            }
+          });
+
+          this.listaReportes = activos;
+          activos.forEach(rep => this.agregarMarcador(rep));
+          this.cdr.detectChanges();
         });
-        this.listaReportes.forEach(rep => this.agregarMarcador(rep));
       },
       error: (err) => console.error('Error cargando historial de reportes:', err)
     });
+  }
+
+  private cargarEstadoOperativo(): void {
+    this.http.get<any[]>(`${this.UNIDADES_API_URL}/estado-operativo`).subscribe({
+      next: (unidades) => {
+        const agrupadas: Record<number, any[]> = {};
+        (unidades || []).forEach(unidad => {
+          const reporteId = Number(unidad.reporteId);
+          if (!Number.isFinite(reporteId) || reporteId <= 0) return;
+          agrupadas[reporteId] = [...(agrupadas[reporteId] || []), unidad];
+        });
+        this.unidadesPorReporte = agrupadas;
+        this.cdr.detectChanges();
+      },
+      error: err => console.error('Error sincronizando estado operativo:', err)
+    });
+  }
+
+  private actualizarEstadoLocal(reporteId: number, estado: string): void {
+    this.listaReportes = this.listaReportes.map(rep =>
+      Number(rep.id) === reporteId ? { ...rep, estado } : rep);
+    this.cdr.detectChanges();
+  }
+
+  private notificarCierre(reporteId: number): void {
+    if (!reporteId) return;
+    this.adminNotice = `Incidente #${reporteId} finalizado por la unidad operativa. El reporte quedó archivado como atendido.`;
+    this.listaReportes = this.listaReportes.filter(rep => Number(rep.id) !== reporteId);
+    const marker = this.markersMap.get(reporteId);
+    if (marker) {
+      this.mapa.removeLayer(marker);
+      this.markersMap.delete(reporteId);
+    }
+    setTimeout(() => {
+      if (this.adminNotice.includes(`#${reporteId}`)) {
+        this.adminNotice = '';
+        this.cdr.detectChanges();
+      }
+    }, 8000);
+    this.cdr.detectChanges();
+  }
+
+  public getEstadoReporteLabel(reporte: any): string {
+    return reporte?.estado === 'EN_ATENCION' ? 'EN ATENCIÓN' : 'PENDIENTE';
   }
 
   private agregarMarcador(rep: any): void {
@@ -267,7 +361,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ea4335" stroke="#ffffff" stroke-width="1.8"/>
             </svg>
           </div>
-          <div class="pin-label">#${repId} · ${shortTitle}</div>
+          <div class="pin-label"><span>#${repId}</span>${shortTitle}</div>
         </div>
       `,
       iconSize: [40, 50],
@@ -277,12 +371,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     const marcador = L.marker([lat, lng], { icon: pinIcon }).addTo(this.mapa);
     marcador.bindPopup(`
-      <div style="font-family:'Barlow',sans-serif; font-size:12px; color:#e2e8f0; background:#0f1218; border:1px solid #2a3348; padding:8px; border-radius:4px;">
-        <b style="color:${classif.color}; font-family:'Barlow Condensed',sans-serif; font-size:13px;">${classif.icon} ${classif.title}</b><br>
-        <span style="color:#94a3b8; font-size:10px;">ID: #${repId}</span>
-        ${rep.iaLabel ? `<br><span style="color:#d8b4fe; font-size:10.5px; font-weight:600;">🤖 IA: ${rep.iaLabel} (${rep.iaConfidence}%)</span>` : ''}
-        <p style="margin:5px 0; color:#cbd5e1; line-height:1.3;">${rep.descripcion}</p>
-        <a href="/detalle/${repId}" style="color:#a78bfa; font-weight:600; text-decoration:none; display:inline-block; margin-top:4px;">Ver Detalles del Incidente &rarr;</a>
+      <div class="incident-map-popup">
+        <div class="incident-map-popup__heading">
+          <span class="incident-map-popup__type" style="--incident-color:${classif.color}">${classif.icon} ${classif.title}</span>
+          <span class="incident-map-popup__id">#${repId}</span>
+        </div>
+        ${rep.iaLabel ? `<div class="incident-map-popup__ai">IA: ${rep.iaLabel} (${rep.iaConfidence}%)</div>` : ''}
+        <p class="incident-map-popup__description">${rep.descripcion}</p>
+        <a class="incident-map-popup__link" href="/detalle/${repId}">Ver detalles del incidente <span aria-hidden="true">→</span></a>
       </div>
     `, {
       closeButton: false,
@@ -314,24 +410,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   public limpiarTodosLosIncidentes(): void {
-    if (!this.listaReportes || this.listaReportes.length === 0) {
-      alert('No hay incidentes activos para limpiar en el dashboard.');
-      return;
-    }
-
-    if (confirm('¿Está seguro de que desea limpiar y dar por solucionados todos los incidentes activos del panel central?')) {
-      this.listaReportes.forEach((rep) => {
-        localStorage.setItem('closed_report_' + rep.id, 'true');
-      });
-
-      this.markersMap.forEach((marker) => {
-        this.mapa.removeLayer(marker);
-      });
-      this.markersMap.clear();
-
-      this.listaReportes = [];
-      this.cdr.detectChanges();
-    }
+    // El panel no debe cerrar incidentes únicamente en el navegador. El cierre
+    // válido lo realiza la última unidad operativa y queda persistido en PostgreSQL.
+    this.cargarHistorial(false);
+    this.cargarEstadoOperativo();
+    this.adminNotice = 'Panel sincronizado con el estado operativo registrado.';
+    setTimeout(() => {
+      if (this.adminNotice === 'Panel sincronizado con el estado operativo registrado.') {
+        this.adminNotice = '';
+        this.cdr.detectChanges();
+      }
+    }, 4000);
+    this.cdr.detectChanges();
   }
 
   public clasificarReporte(desc: string): any {
@@ -342,7 +432,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           severity: 'critical',
           title: 'INCENDIO ESTRUCTURAL',
           badge: 'CRÍTICO',
-          icon: '🔥',
+          icon: '',
           color: '#ff6b6b',
           aiTags: ['Humo denso', 'Peligro estructural', 'Llamas activas'],
           conf: '94%',
@@ -353,7 +443,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         severity: 'critical',
         title: 'INCENDIO FORESTAL',
         badge: 'CRÍTICO',
-        icon: '🌲',
+        icon: '',
         color: '#ff6b6b',
         aiTags: ['Llamas activas', 'Propagación alta'],
         conf: '89%',
@@ -365,7 +455,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           severity: 'high',
           title: 'FUGA DE GAS',
           badge: 'ALTO',
-          icon: '⚠️',
+          icon: '',
           color: '#f59e0b',
           aiTags: ['Gas inflamable', 'Zona de exclusión'],
           conf: '78%',
@@ -377,7 +467,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           severity: 'high',
           title: 'COLAPSO PARCIAL',
           badge: 'ALTO',
-          icon: '🏗',
+        icon: '',
           color: '#f59e0b',
           aiTags: ['Estructura comprometida', 'Herido atrapado'],
           conf: '85%',
@@ -388,7 +478,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         severity: 'high',
         title: 'MAT. PELIGROSO',
         badge: 'ALTO',
-        icon: '☣️',
+        icon: '',
         color: '#f59e0b',
         aiTags: ['Sustancia corrosiva', 'Viento dispersor'],
         conf: '71%',
@@ -400,7 +490,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           severity: 'medium',
           title: 'INUNDACIÓN',
           badge: 'MEDIO',
-          icon: '💧',
+          icon: '',
           color: '#60a5fa',
           aiTags: ['Acumulación agua', 'Zona baja'],
           conf: '82%',
@@ -411,7 +501,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         severity: 'medium',
         title: 'ACCIDENTE VIAL',
         badge: 'MEDIO',
-        icon: '🚗',
+        icon: '',
         color: '#60a5fa',
         aiTags: ['Colisión múltiple', 'Obstrucción vía'],
         conf: '77%',
@@ -422,7 +512,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       severity: 'medium',
       title: 'REPORTE CIUDADANO',
       badge: 'MEDIO',
-      icon: '📍',
+      icon: '',
       color: '#60a5fa',
       aiTags: ['Análisis pendiente'],
       conf: '60%',
@@ -504,16 +594,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   public agregarUnidad(): void {
-    if (!this.nuevaUnidad.nombre || !this.nuevaUnidad.tipo) {
-      alert('Por favor ingrese el nombre y tipo de la unidad.');
+    const nombre = this.nuevaUnidad.nombre.trim().replace(/\s+/g, ' ');
+    const tipo = this.nuevaUnidad.tipo.trim().replace(/\s+/g, ' ');
+    if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 -]{2,60}$/.test(nombre)
+        || !/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 /-]{2,60}$/.test(tipo)) {
+      alert('Ingresa un nombre y tipo de unidad válidos.');
       return;
     }
+    this.nuevaUnidad = { nombre, tipo };
     this.http.post<any>(this.UNIDADES_API_URL, this.nuevaUnidad).subscribe({
       next: () => {
         this.nuevaUnidad = { nombre: '', tipo: '' };
         this.cargarUnidades();
       },
-      error: (err) => console.error('Error agregando unidad:', err)
+      error: (err) => alert(
+        err.error?.error || err.error?.message || 'No se pudo registrar la unidad.')
     });
   }
 
@@ -521,7 +616,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (confirm('¿Seguro que deseas eliminar esta unidad permanentemente?')) {
       this.http.delete(`${this.UNIDADES_API_URL}/${id}`).subscribe({
         next: () => this.cargarUnidades(),
-        error: (err) => console.error('Error eliminando unidad:', err)
+        error: (err) => alert(
+          err.error?.error || err.error?.message || 'No se pudo eliminar la unidad.')
       });
     }
   }
@@ -530,7 +626,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const nuevoEstado = event.target.value;
     this.http.put(`${this.UNIDADES_API_URL}/${id}/estado?estado=${nuevoEstado}`, {}).subscribe({
       next: () => this.cargarUnidades(),
-      error: (err) => alert('Error al cambiar estado: ' + err.message)
+      error: (err) => {
+        alert('No se cambió el estado: '
+          + (err.error?.error || err.error?.message || err.message));
+        this.cargarUnidades();
+      }
     });
   }
 
@@ -607,7 +707,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public copiarCodigoZona(code: string): void {
     if (!code) return;
     navigator.clipboard.writeText(code);
-    alert('✅ Código de Zona copiado al portapapeles:\n' + code + '\n\nCompártelo a tus operadores para que se vinculen a tu centro de mando.');
+    alert('Código de zona copiado al portapapeles:\n' + code + '\n\nCompártelo con tus operadores para que se vinculen al centro de mando.');
   }
 
   public logout(): void {
@@ -644,7 +744,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.isAiThinking = true;
     this.cdr.detectChanges();
 
-    this.http.post<any>(this.AI_URL, { pregunta: texto }).subscribe({
+    // La UI no puede quedar bloqueada si Ollama o la red tardan demasiado.
+    this.http.post<any>(this.AI_URL, { pregunta: texto }).pipe(
+      timeout(45_000)
+    ).subscribe({
       next: (res) => {
         this.ngZone.run(() => {
           this.isAiThinking = false;
@@ -663,9 +766,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.isAiThinking = false;
           this.aiMessages.push({
             sender: 'ai',
-            text: '⚠️ No se pudo consultar el Copiloto Operativo. Verifica que Spring Boot esté ejecutándose.',
+            text: 'No se pudo consultar el Copiloto Operativo. Verifica la conexión del sistema.',
             time: new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
           });
+          const ultimoMensaje = this.aiMessages[this.aiMessages.length - 1];
+          ultimoMensaje.text = err?.name === 'TimeoutError'
+            ? 'El Copiloto Operativo tardó demasiado en responder. Intenta nuevamente; los servicios continúan disponibles.'
+            : 'No fue posible consultar el Copiloto Operativo en este momento. Verifica la conexión del sistema e inténtalo de nuevo.';
           this.cdr.detectChanges();
         });
       }

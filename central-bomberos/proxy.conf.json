@@ -1,0 +1,18 @@
+{
+  "/api": {
+    "target": "http://localhost:8081",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/uploads": {
+    "target": "http://localhost:8081",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/ws-emergencias": {
+    "target": "ws://localhost:8081",
+    "ws": true,
+    "secure": false
+  }
+}
+

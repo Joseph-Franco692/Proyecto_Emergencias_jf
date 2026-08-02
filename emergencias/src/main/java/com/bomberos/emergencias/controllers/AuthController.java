@@ -40,6 +40,19 @@ public class AuthController {
         ));
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, Object>> forgotPassword(@RequestBody Map<String, String> request) {
+        return ResponseEntity.ok(authService.requestPasswordReset(request.get("email")));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody Map<String, String> request) {
+        return ResponseEntity.ok(authService.resetPassword(
+                request.get("token"),
+                request.get("password")
+        ));
+    }
+
     @PostMapping("/google")
     public ResponseEntity<Map<String, Object>> loginGoogle(@RequestBody Map<String, String> request) {
         return ResponseEntity.ok(authService.loginWithGoogle(

@@ -27,7 +27,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return throwError(() => error);
   };
 
-  if (token && req.url.includes('localhost:8081') && !isPublicRequest) {
+  const isBackendRequest = req.url.startsWith('/api/');
+  if (token && isBackendRequest && !isPublicRequest) {
     const authReq = req.clone({
       setHeaders: {
         Authorization: `Bearer ${token}`

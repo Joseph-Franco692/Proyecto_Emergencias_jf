@@ -39,7 +39,7 @@ interface PremiumOrder {
   styleUrl: './premium.css'
 })
 export class PremiumComponent implements OnInit, OnDestroy {
-  private readonly apiUrl = 'http://localhost:8081/api/premium';
+  private readonly apiUrl = '/api/premium';
 
   plan: PlanConfig = {
     nombre: 'Plan Premium de Prevención', montoCentavos: 4999, moneda: 'USD',
@@ -104,10 +104,25 @@ export class PremiumComponent implements OnInit, OnDestroy {
       this.error = 'Ingresa un correo electrónico válido.';
       return;
     }
-    if (!/^\d{10,15}$/.test(this.form.telefono.replace(/\D/g, ''))) {
-      this.error = 'Ingresa un teléfono válido de 10 a 15 dígitos.';
+    if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]{3,80}$/.test(this.form.nombres.trim())) {
+      this.error = 'Ingresa un nombre completo válido, sin números ni caracteres especiales.';
       return;
     }
+    const telefono = this.form.telefono.replace(/\D/g, '');
+    if (!/^09\d{8}$/.test(telefono)) {
+      this.error = 'Ingresa un celular ecuatoriano de 10 dígitos que comience con 09.';
+      return;
+    }
+    if (this.form.direccion.trim().length < 8) {
+      this.error = 'Ingresa una dirección suficientemente detallada para coordinar la instalación.';
+      return;
+    }
+    this.form.nombres = this.form.nombres.trim().replace(/\s+/g, ' ');
+    this.form.email = this.form.email.trim().toLowerCase();
+    this.form.telefono = telefono;
+    this.form.direccion = this.form.direccion.trim();
+    this.form.ciudad = this.form.ciudad.trim();
+    this.form.provincia = this.form.provincia.trim();
     this.step = 3;
   }
 

@@ -1,0 +1,2505 @@
+{
+  "source": "documentacion\\PROYECTO_FIREFIGHTER_BASE.docx",
+  "paragraph_count": 303,
+  "table_count": 1,
+  "inline_shape_count": 0,
+  "paragraphs": [
+    {
+      "index": 6,
+      "style": "Normal",
+      "text": "PERIODO         \t\t:          2026 Abril– Agosto 2026"
+    },
+    {
+      "index": 7,
+      "style": "Normal",
+      "text": "ASIGNATURA     \t            :          Aplicaciones Distribuidas"
+    },
+    {
+      "index": 8,
+      "style": "Normal",
+      "text": "TEMA\t: \tProyecto"
+    },
+    {
+      "index": 9,
+      "style": "Normal",
+      "text": "ESTUDIANTE\t \t            :           Joseph Franco"
+    },
+    {
+      "index": 10,
+      "style": "Normal",
+      "text": "NIVEL-PARALELO               :    \t7mo"
+    },
+    {
+      "index": 11,
+      "style": "Normal",
+      "text": "DOCENTE       \t \t            :           Ing. Geovanny Brito"
+    },
+    {
+      "index": 12,
+      "style": "Normal",
+      "text": "FECHA DE ENTREGA          :       \t23/06/2026"
+    },
+    {
+      "index": 19,
+      "style": "Normal",
+      "text": "SANTO DOMINGO - ECUADOR"
+    },
+    {
+      "index": 23,
+      "style": "Normal",
+      "text": "ÍNDICE"
+    },
+    {
+      "index": 45,
+      "style": "Heading 1",
+      "text": "Resumen"
+    },
+    {
+      "index": 46,
+      "style": "Normal",
+      "text": "El presente proyecto aborda la necesidad crítica de optimizar los tiempos de respuesta y la coordinación operativa en las estaciones de bomberos mediante la digitalización y descentralización de sus procesos. El propósito principal de la aplicación es proveer una plataforma distribuida, escalable y tolerante a fallos que permita a los ciudadanos reportar incidentes con evidencia multimedia y a los operadores despachar unidades bomberiles con visibilidad táctica en tiempo real."
+    },
+    {
+      "index": 48,
+      "style": "Normal",
+      "text": "Para alcanzar este objetivo, se diseñó una arquitectura basada en microservicios empleando tecnologías de vanguardia: Angular para el desarrollo de la interfaz de usuario web, Node.js como servicio independiente de identidad (OAuth 2.0 y emisión de tokens), Spring Boot para la lógica de negocio central transaccional, y PostgreSQL como motor de persistencia relacional. El estado actual del proyecto es altamente funcional; se han integrado exitosamente tecnologías de concurrencia para el procesamiento de archivos multimedia, WebSockets para la transmisión de eventos en vivo, y JSON Web Tokens (JWT) para la protección estricta y sin estado de las rutas de servicio (stateless security)."
+    },
+    {
+      "index": 50,
+      "style": "Normal",
+      "text": "Los resultados que se esperan alcanzar a mediano y largo plazo incluyen la completa expansión del sistema hacia aplicaciones móviles (APK) para el uso en campo por parte del personal de respuesta, así como la integración de dispositivos de Internet de las Cosas (IoT). Estos dispositivos permitirán verificar de forma autónoma parámetros ambientales (gases, temperatura y humo) para dictaminar si una vivienda es habitable tras la mitigación de un incendio, alimentando la bitácora central."
+    },
+    {
+      "index": 51,
+      "style": "Normal",
+      "text": "Palabras clave: Arquitectura Distribuida, WebSockets, JWT, Microservicios, IoT, Tiempo Real."
+    },
+    {
+      "index": 52,
+      "style": "Heading 1",
+      "text": "Introducción"
+    },
+    {
+      "index": 53,
+      "style": "Normal",
+      "text": "En el ámbito de la gestión de emergencias civiles, la latencia en la transmisión de la información puede representar la diferencia entre la salvaguarda de vidas y la pérdida irreparable de bienes materiales. Históricamente, las centrales de bomberos operan bajo sistemas de despacho monolíticos, centralizados y dependientes de canales de comunicación secuenciales como radios o llamadas telefónicas."
+    },
+    {
+      "index": 55,
+      "style": "Normal",
+      "text": "La presente práctica aborda la evolución de estos sistemas hacia una arquitectura moderna, presentando un ecosistema distribuido donde la información fluye de manera asíncrona y los recursos computacionales se dividen estratégicamente. A través de la implementación de la \"Central de Bomberos y Emergencias\", se examinan mecanismos avanzados como la persistencia de datos bajo transacciones ACID, el manejo de concurrencia para I/O intensivo, y la delegación de seguridad a servicios de identidad aislados mediante el protocolo OAuth 2.0."
+    },
+    {
+      "index": 57,
+      "style": "Normal",
+      "text": "A lo largo de este informe se detalla la estructuración de la solución, iniciando con el planteamiento formal del problema y los objetivos del proyecto. Posteriormente, se presenta un marco teórico riguroso que sustenta las decisiones tecnológicas adoptadas, seguido de un desglose exhaustivo de cómo los contenidos de la asignatura fueron materializados en líneas de código y componentes de software. Finalmente, se proyecta la visión futura del sistema hacia el ecosistema móvil y el hardware IoT."
+    },
+    {
+      "index": 59,
+      "style": "Heading 1",
+      "text": "Planteamiento del problema"
+    },
+    {
+      "index": 60,
+      "style": "Normal",
+      "text": "Las centrales de despacho de emergencias locales se enfrentan al reto de procesar volúmenes variables e impredecibles de información bajo presión extrema. El proceso tradicional se ve afectado por la incapacidad de los ciudadanos para proporcionar contexto visual inmediato y la saturación de los operadores, quienes deben actualizar y sincronizar sus tableros de manera manual."
+    },
+    {
+      "index": 62,
+      "style": "Normal",
+      "text": "Las consecuencias de mantener este proceso obsoleto incluyen el incremento estadístico en los tiempos de respuesta (TDR), la mala asignación de unidades bomberiles y la falta de trazabilidad digital posterior al evento. A esto se suma el problema técnico de la disponibilidad: un sistema monolítico tradicional colapsaría si cientos de ciudadanos intentan reportar una catástrofe de forma simultánea."
+    },
+    {
+      "index": 64,
+      "style": "Normal",
+      "text": "La implementación de una aplicación distribuida aporta directamente a la solución al fragmentar la carga. Un microservicio exclusivo se encarga de la autenticación, mientras que otro procesa las solicitudes transaccionales; todo esto apoyado por WebSockets que empujan la información a la vista del operador en milisegundos."
+    },
+    {
+      "index": 66,
+      "style": "Normal",
+      "text": "Ante este panorama, surge la siguiente pregunta de desarrollo: ¿De qué manera el diseño de una arquitectura distribuida basada en microservicios, eventos en tiempo real e integración IoT optimiza el tiempo de respuesta y la gestión del ciclo de vida de un incidente en una central bomberil?"
+    },
+    {
+      "index": 68,
+      "style": "Heading 1",
+      "text": "Justificación"
+    },
+    {
+      "index": 69,
+      "style": "Normal",
+      "text": "La realización de este proyecto tecnológico se justifica profundamente desde su impacto social. Proveer a una ciudad con un sistema de emergencias resiliente salva vidas y protege el patrimonio."
+    },
+    {
+      "index": 71,
+      "style": "Normal",
+      "text": "Desde la perspectiva de los usuarios, los ciudadanos obtienen una herramienta directa y multimedia para alertar siniestros, mientras que el cuerpo de bomberos recibe un tablero táctico automatizado. A nivel de aporte tecnológico, el sistema representa un caso de estudio idóneo sobre la desvinculación de componentes. La autenticación se separa completamente del negocio, demostrando que un cliente Angular puede orquestar la comunicación entre dos dominios de servidores Node.js y Spring Boot de manera armónica."
+    },
+    {
+      "index": 73,
+      "style": "Normal",
+      "text": "El proyecto mantiene una relación absoluta y directa con los contenidos de la asignatura \"Aplicaciones Distribuidas\", integrando en una sola solución funcional las teorías de concurrencia, balanceo lógico, sockets bidireccionales y seguridad descentralizada. La viabilidad del proyecto es alta al estar sustentada en tecnologías de código abierto Java, TypeScript, PostgreSQL."
+    },
+    {
+      "index": 75,
+      "style": "Heading 1",
+      "text": "Objetivos"
+    },
+    {
+      "index": 76,
+      "style": "List Paragraph",
+      "text": "Objetivo General"
+    },
+    {
+      "index": 77,
+      "style": "Normal",
+      "text": "Desarrollar, desplegar y documentar una aplicación distribuida para la gestión y despacho de unidades bomberiles, integrando mecanismos de comunicación en tiempo real, seguridad sin estado, concurrencia, y proyectando su escalabilidad hacia interfaces móviles APK e integración IoT."
+    },
+    {
+      "index": 79,
+      "style": "List Paragraph",
+      "text": "Objetivos Específicos"
+    },
+    {
+      "index": 80,
+      "style": "List Paragraph",
+      "text": "Diseñar la arquitectura distribuida del proyecto personal, aislando la gestión de identidades y credenciales Node.js del núcleo de procesamiento de recursos y almacenamiento de datos Spring Boot y la vista interactiva Angular."
+    },
+    {
+      "index": 81,
+      "style": "List Paragraph",
+      "text": "Implementar los contenidos prácticos estudiados en la asignatura, incluyendo el uso de WebSockets para notificaciones instantáneas, hilos asíncronos para el manejo de archivos multimedia, y filtros interceptores para validación de JSON Web Tokens JWT generados por Google OAuth."
+    },
+    {
+      "index": 82,
+      "style": "List Paragraph",
+      "text": "Documentar el avance y funcionamiento del sistema mediante un informe técnico que evidencie el manejo centralizado de excepciones, logs de auditoría transaccional, y defina los requerimientos no funcionales orientados al hardware IoT y aplicaciones móviles."
+    },
+    {
+      "index": 83,
+      "style": "Heading 1",
+      "text": "Marco teórico"
+    },
+    {
+      "index": 84,
+      "style": "Normal",
+      "text": "Aplicaciones distribuidas y Arquitectura Microservicios: Un sistema distribuido se define como un conjunto de computadoras independientes que se presentan ante los usuarios como un sistema único y coherente. El estilo arquitectónico de microservicios promueve el desarrollo de una aplicación como una suite de pequeños servicios, cada uno ejecutándose en su propio proceso y comunicándose mediante mecanismos ligeros como APIs REST HTTP (Newman, 2021)."
+    },
+    {
+      "index": 85,
+      "style": "Normal",
+      "text": "Comunicación en Tiempo Real (WebSocket): Es un protocolo de comunicación informática estandarizado por la IETF que proporciona canales de comunicación full-duplex sobre una única conexión TCP de larga duración, superando las limitaciones de latencia del protocolo HTTP tradicional (Luo & Li, 2022)."
+    },
+    {
+      "index": 86,
+      "style": "Normal",
+      "text": "Concurrencia y Asincronía: La concurrencia es la capacidad de un sistema para componer y manejar múltiples tareas independientes, ejecutándolas en periodos de tiempo superpuestos. En Java, el manejo de thread pools previene el bloqueo del hilo principal durante operaciones pesadas de Entrada/Salida (I/O) (Smith, 2023)."
+    },
+    {
+      "index": 87,
+      "style": "Normal",
+      "text": "Autenticación con JWT y OAuth 2.0: OAuth 2.0 es el marco estándar de autorización de la industria que permite a aplicaciones de terceros obtener acceso limitado a un servicio. En conjunto, JSON Web Tokens (JWT) provee un medio criptográficamente seguro, autocontenido y compacto para transmitir afirmaciones de identidad (claims) entre dos partes, facilitando arquitecturas stateless sin estado (Jones & Bradley, 2021)."
+    },
+    {
+      "index": 88,
+      "style": "Normal",
+      "text": "Transacciones y Propiedades ACID: En el contexto de bases de datos y sistemas empresariales, una transacción debe cumplir con la atomicidad, consistencia, aislamiento y durabilidad ACID para asegurar que el sistema no quede en un estado corrupto si un proceso falla parcialmente (Chen et al., 2020)."
+    },
+    {
+      "index": 90,
+      "style": "Heading 1",
+      "text": "Desarrollo del proyecto"
+    },
+    {
+      "index": 91,
+      "style": "Normal",
+      "text": "El sistema fue estructurado bajo un enfoque de desarrollo ágil y arquitectura cliente-servidor distribuida, separando estrictamente la interfaz gráfica de la lógica operativa y de la administración de accesos."
+    },
+    {
+      "index": 92,
+      "style": "Normal",
+      "text": "Usuarios de la aplicación:"
+    },
+    {
+      "index": 93,
+      "style": "List Paragraph",
+      "text": "Ciudadano: Usuario que, sin necesidad de inicio de sesión, puede acceder a la ruta pública del sistema para reportar un incidente, adjuntando su ubicación GPS, descripción y evidencia multimedia fotografías o videos."
+    },
+    {
+      "index": 94,
+      "style": "List Paragraph",
+      "text": "Operador / Docente: Personal autorizado de la central de bomberos que se autentica en el sistema mediante cuentas corporativas de Google. Tienen la responsabilidad de evaluar los reportes entrantes en el tablero, asignar y despachar unidades, y gestionar el ciclo de vida del incidente."
+    },
+    {
+      "index": 95,
+      "style": "Normal",
+      "text": "Tecnologías y Estructura de Carpetas:"
+    },
+    {
+      "index": 96,
+      "style": "List Paragraph",
+      "text": "Frontend (Cliente Web): Desarrollado en Angular v17 con TypeScript. Estructurado en componentes dashboard, reportar, detalle, servicios y rutas protegidas."
+    },
+    {
+      "index": 97,
+      "style": "List Paragraph",
+      "text": "Identity Service (Autenticación): Desarrollado en Node.js y Express. Este microservicio contiene rutas específicas auth.routes.js para contactar con los servidores de Google, verificar credenciales y firmar tokens de sesión."
+    },
+    {
+      "index": 98,
+      "style": "List Paragraph",
+      "text": "Resource Service (Backend Principal): Desarrollado en Spring Boot v4. Este servidor agrupa los controladores REST ReporteController, UnidadController, los servicios de negocio ReporteService, UnidadBomberilService y repositorios JPA para la manipulación de datos en PostgreSQL."
+    },
+    {
+      "index": 99,
+      "style": "Normal",
+      "text": "Tal como se ilustra en la Figura 1, la arquitectura del sistema evidencia la conexión descentralizada. El cliente Angular sirve como puente principal, interactuando primero con el microservicio de autenticación para obtener un salvoconducto digital JWT, el cual es posteriormente utilizado para consumir la API protegida del servidor Spring Boot."
+    },
+    {
+      "index": 104,
+      "style": "Heading 1",
+      "text": "Aplicación de los contenidos de la asignatura"
+    },
+    {
+      "index": 105,
+      "style": "Normal",
+      "text": "En esta sección se detalla cómo los componentes teóricos estudiados en el periodo académico fueron materializados en artefactos de software, utilizando fragmentos de código relevantes y explicando su mecanismo operativo."
+    },
+    {
+      "index": 106,
+      "style": "Heading 1",
+      "text": "Comunicación en Tiempo Real mediante WebSockets"
+    },
+    {
+      "index": 107,
+      "style": "Normal",
+      "text": "Finalidad: Proveer un mecanismo para que la interfaz web del operador de la central reciba notificaciones instantáneas de nuevas emergencias o cambios de estado en las unidades bomberiles, evitando la ineficiencia técnica de recargar la página web constantemente técnica de polling HTTP. Parte del proyecto: Implementado transversalmente en ReporteService.java, UnidadBomberilService.java y los servicios del cliente Angular. Explicación: Se implementó la librería de mensajería SimpMessagingTemplate de Spring Boot. Cuando una unidad es despachada y se actualiza la base de datos, el servidor empuja un mensaje de forma proactiva hacia el tópico /topic/unidades-estado. Todos los clientes suscritos interceptan este evento. El código utilizado para emitir esta difusión se muestra en el Algoritmo 1, cuyo impacto visual en la consola del navegador se evidencia en la Figura 2."
+    },
+    {
+      "index": 109,
+      "style": "Caption",
+      "text": "Algoritmo 1"
+    },
+    {
+      "index": 110,
+      "style": "Caption",
+      "text": "Emisión de notificaciones por WebSocket en UnidadBomberilService.java"
+    },
+    {
+      "index": 111,
+      "style": "Normal (Web)",
+      "text": "1. // Payload de notificación para el dashboard central"
+    },
+    {
+      "index": 112,
+      "style": "Normal (Web)",
+      "text": "2. Map<String, Object> notificacion = new HashMap<>();"
+    },
+    {
+      "index": 113,
+      "style": "Normal (Web)",
+      "text": "3. notificacion.put(\"tipo\", \"DESPACHO\");"
+    },
+    {
+      "index": 114,
+      "style": "Normal (Web)",
+      "text": "4. notificacion.put(\"reporteId\", reporteId);"
+    },
+    {
+      "index": 115,
+      "style": "Normal (Web)",
+      "text": "5. notificacion.put(\"unidades\", unidadesDespachadas);"
+    },
+    {
+      "index": 116,
+      "style": "Normal (Web)",
+      "text": "6."
+    },
+    {
+      "index": 117,
+      "style": "Normal (Web)",
+      "text": "7. // Registro en el log del servidor"
+    },
+    {
+      "index": 118,
+      "style": "Normal (Web)",
+      "text": "8. log.info(\"--- DIFUNDIENDO DESPACHO VIA WEBSOCKET: {} ---\", notificacion);"
+    },
+    {
+      "index": 119,
+      "style": "Normal (Web)",
+      "text": "9."
+    },
+    {
+      "index": 120,
+      "style": "Normal (Web)",
+      "text": "10. // Difusión directa del evento a los clientes suscritos"
+    },
+    {
+      "index": 121,
+      "style": "Normal (Web)",
+      "text": "11. messagingTemplate.convertAndSend(\"/topic/unidades-estado\", (Object) notificacion);"
+    },
+    {
+      "index": 122,
+      "style": "Normal (Web)",
+      "text": "12."
+    },
+    {
+      "index": 127,
+      "style": "Caption",
+      "text": "Figura 2"
+    },
+    {
+      "index": 128,
+      "style": "Caption",
+      "text": "Mapa actualizándose automáticamente sin recargar la página"
+    },
+    {
+      "index": 130,
+      "style": "Heading 1",
+      "text": "Concurrencia y Tareas Asíncronas"
+    },
+    {
+      "index": 131,
+      "style": "Normal",
+      "text": "En este paso se trata de garantizar que el servidor web principal no bloquee la atención a nuevos usuarios mientras se encuentra escribiendo o procesando archivos pesados de video o imágenes en el disco duro. Parte del proyecto: Función guardarEvidenciasMultimediaAsincrono dentro de ReporteService.java. Explicación: Al adjuntar la anotación @Async de Spring, el framework intercepta la llamada al método y la despacha a un hilo de trabajo en un ThreadPool secundario. De este modo, la petición HTTP original retorna un código de éxito al ciudadano casi instantáneamente, mientras que el archivo se transfiere físicamente en paralelo. El bloque de código concurrente se detalla en el Algoritmo 2."
+    },
+    {
+      "index": 136,
+      "style": "Caption",
+      "text": "Algoritmo 2"
+    },
+    {
+      "index": 137,
+      "style": "Caption",
+      "text": "Manejo concurrente de guardado de archivos multimedia"
+    },
+    {
+      "index": 138,
+      "style": "Normal (Web)",
+      "text": "1. @Async"
+    },
+    {
+      "index": 139,
+      "style": "Normal (Web)",
+      "text": "2. public void guardarEvidenciasMultimediaAsincrono(ReporteCiudadano reporte, List<EvidenciaDto> archivos) {"
+    },
+    {
+      "index": 140,
+      "style": "Normal (Web)",
+      "text": "3.     for (EvidenciaDto archivo : archivos) {"
+    },
+    {
+      "index": 141,
+      "style": "Normal (Web)",
+      "text": "4.         try {"
+    },
+    {
+      "index": 142,
+      "style": "Normal (Web)",
+      "text": "5.             String nombreUnico = UUID.randomUUID().toString() + \"_\" + archivo.filename();"
+    },
+    {
+      "index": 143,
+      "style": "Normal (Web)",
+      "text": "6.             Path rutaCompleta = Paths.get(CARPETA_UPLOADS + nombreUnico);"
+    },
+    {
+      "index": 144,
+      "style": "Normal (Web)",
+      "text": "7."
+    },
+    {
+      "index": 145,
+      "style": "Normal (Web)",
+      "text": "8.             // Operación I/O pesada en hilo secundario"
+    },
+    {
+      "index": 146,
+      "style": "Normal (Web)",
+      "text": "9.             Files.write(rutaCompleta, archivo.bytes());"
+    },
+    {
+      "index": 147,
+      "style": "Normal (Web)",
+      "text": "10."
+    },
+    {
+      "index": 148,
+      "style": "Normal (Web)",
+      "text": "11.             // Registro exitoso del hilo asíncrono"
+    },
+    {
+      "index": 149,
+      "style": "Normal (Web)",
+      "text": "12.             log.info(\"--- HILO SECUNDARIO (Async): Archivo guardado con éxito: {} ---\", nombreUnico);"
+    },
+    {
+      "index": 150,
+      "style": "Normal (Web)",
+      "text": "13.         } catch (IOException e) {"
+    },
+    {
+      "index": 151,
+      "style": "Normal (Web)",
+      "text": "14.             log.error(\"Error en segundo plano: {}\", e.getMessage());"
+    },
+    {
+      "index": 152,
+      "style": "Normal (Web)",
+      "text": "15.         }"
+    },
+    {
+      "index": 153,
+      "style": "Normal (Web)",
+      "text": "16.     }"
+    },
+    {
+      "index": 154,
+      "style": "Normal (Web)",
+      "text": "17. }"
+    },
+    {
+      "index": 155,
+      "style": "Normal (Web)",
+      "text": "18."
+    },
+    {
+      "index": 158,
+      "style": "Heading 1",
+      "text": "Protección mediante JWT y Autenticación OAuth 2.0"
+    },
+    {
+      "index": 159,
+      "style": "Normal",
+      "text": "En este caso se busca establecer un perímetro de seguridad robusto y descentralizado. He de asegurar que únicamente el personal validado a través de los servidores de identidad de Google tenga privilegios para gestionar los recursos críticos de la central de bomberos. Parte del proyecto: Archivo de rutas auth.routes.js en Node.js y filtro de red JwtValidationFilter.java en Spring Boot. Explicación: El flujo es de tres pasos: (1) El cliente obtiene una credencial de Google; (2) El microservicio de Node.js la verifica y firma un token JWT criptográficamente seguro, entregándolo al cliente; (3) Spring Boot recibe este token en las peticiones HTTP y evalúa matemáticamente su autenticidad sin necesidad de comunicarse de vuelta con Node.js, confirmando el carácter stateless (sin estado) del sistema distribuido. El Algoritmo 3 ilustra el filtro interceptor en Java, y la Figura 3 muestra el token interceptado."
+    },
+    {
+      "index": 160,
+      "style": "Caption",
+      "text": "Algoritmo 3"
+    },
+    {
+      "index": 161,
+      "style": "Caption",
+      "text": "Filtro de seguridad para validación de JSON Web Tokens (JWT)"
+    },
+    {
+      "index": 162,
+      "style": "Normal (Web)",
+      "text": "1. public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) {"
+    },
+    {
+      "index": 163,
+      "style": "Normal (Web)",
+      "text": "2.     HttpServletRequest req = (HttpServletRequest) request;"
+    },
+    {
+      "index": 164,
+      "style": "Normal (Web)",
+      "text": "3.     String path = req.getRequestURI();"
+    },
+    {
+      "index": 165,
+      "style": "Normal (Web)",
+      "text": "4."
+    },
+    {
+      "index": 166,
+      "style": "Normal (Web)",
+      "text": "5.     // Requerimos JWT estrictamente para rutas privadas /api/"
+    },
+    {
+      "index": 167,
+      "style": "Normal (Web)",
+      "text": "6.     if (path.startsWith(\"/api/\") && !path.startsWith(\"/api/reportes/ciudadano\")) {"
+    },
+    {
+      "index": 168,
+      "style": "Normal (Web)",
+      "text": "7.         String authHeader = req.getHeader(\"Authorization\");"
+    },
+    {
+      "index": 169,
+      "style": "Normal (Web)",
+      "text": "8.         if (authHeader == null || !authHeader.startsWith(\"Bearer \")) {"
+    },
+    {
+      "index": 170,
+      "style": "Normal (Web)",
+      "text": "9.             ((HttpServletResponse) response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);"
+    },
+    {
+      "index": 171,
+      "style": "Normal (Web)",
+      "text": "10.             return; // Bloqueo de petición"
+    },
+    {
+      "index": 172,
+      "style": "Normal (Web)",
+      "text": "11.         }"
+    },
+    {
+      "index": 173,
+      "style": "Normal (Web)",
+      "text": "12."
+    },
+    {
+      "index": 174,
+      "style": "Normal (Web)",
+      "text": "13.         String token = authHeader.substring(7);"
+    },
+    {
+      "index": 175,
+      "style": "Normal (Web)",
+      "text": "14.         try {"
+    },
+    {
+      "index": 176,
+      "style": "Normal (Web)",
+      "text": "15.             // Verificación criptográfica del Token JWT"
+    },
+    {
+      "index": 177,
+      "style": "Normal (Web)",
+      "text": "16.             Claims claims = Jwts.parserBuilder()"
+    },
+    {
+      "index": 178,
+      "style": "Normal (Web)",
+      "text": "17.                     .setSigningKey(key).build()"
+    },
+    {
+      "index": 179,
+      "style": "Normal (Web)",
+      "text": "18.                     .parseClaimsJws(token).getBody();"
+    },
+    {
+      "index": 180,
+      "style": "Normal (Web)",
+      "text": "19.             req.setAttribute(\"userEmail\", claims.get(\"email\"));"
+    },
+    {
+      "index": 181,
+      "style": "Normal (Web)",
+      "text": "20.         } catch (Exception e) {"
+    },
+    {
+      "index": 182,
+      "style": "Normal (Web)",
+      "text": "21.             ((HttpServletResponse) response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);"
+    },
+    {
+      "index": 183,
+      "style": "Normal (Web)",
+      "text": "22.             return;"
+    },
+    {
+      "index": 184,
+      "style": "Normal (Web)",
+      "text": "23.         }"
+    },
+    {
+      "index": 185,
+      "style": "Normal (Web)",
+      "text": "24.     }"
+    },
+    {
+      "index": 186,
+      "style": "Normal (Web)",
+      "text": "25.     chain.doFilter(request, response);"
+    },
+    {
+      "index": 187,
+      "style": "Normal (Web)",
+      "text": "26. }"
+    },
+    {
+      "index": 188,
+      "style": "Normal (Web)",
+      "text": "27."
+    },
+    {
+      "index": 190,
+      "style": "Heading 1",
+      "text": "Manejo Centralizado de Excepciones y Logs"
+    },
+    {
+      "index": 191,
+      "style": "Normal",
+      "text": "Proveer respuestas uniformes ante errores no anticipados y registrar trazas de auditoría que permitan diagnosticar problemas en entornos de producción. Parte del proyecto: Clase GlobalExceptionHandler.java y anotaciones @Slf4j en servicios clave. Explicación: Se programó una capa de manejo global usando @RestControllerAdvice. Si un fragmento de código arroja una excepción no manejada localmente, esta clase atrapa el evento y construye un payload estandarizado JSON, previniendo que el servidor filtre trazas de pila (stack traces) sensibles al cliente. El diseño centralizado se expone en el Algoritmo 4, y su evidencia visual en la Figura 4."
+    },
+    {
+      "index": 193,
+      "style": "Caption",
+      "text": "Algoritmo 4"
+    },
+    {
+      "index": 194,
+      "style": "Caption",
+      "text": "Clase global para intercepción y serialización de excepciones"
+    },
+    {
+      "index": 195,
+      "style": "Normal (Web)",
+      "text": "1. @RestControllerAdvice"
+    },
+    {
+      "index": 196,
+      "style": "Normal (Web)",
+      "text": "2. public class GlobalExceptionHandler {"
+    },
+    {
+      "index": 197,
+      "style": "Normal (Web)",
+      "text": "3.     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);"
+    },
+    {
+      "index": 198,
+      "style": "Normal (Web)",
+      "text": "4."
+    },
+    {
+      "index": 199,
+      "style": "Normal (Web)",
+      "text": "5.     @ExceptionHandler(Exception.class)"
+    },
+    {
+      "index": 200,
+      "style": "Normal (Web)",
+      "text": "6.     public ResponseEntity<Object> handleAllExceptions(Exception ex) {"
+    },
+    {
+      "index": 201,
+      "style": "Normal (Web)",
+      "text": "7.         logger.error(\"Se produjo un error no controlado: \", ex);"
+    },
+    {
+      "index": 202,
+      "style": "Normal (Web)",
+      "text": "8."
+    },
+    {
+      "index": 203,
+      "style": "Normal (Web)",
+      "text": "9.         Map<String, Object> body = new LinkedHashMap<>();"
+    },
+    {
+      "index": 204,
+      "style": "Normal (Web)",
+      "text": "10.         body.put(\"timestamp\", LocalDateTime.now());"
+    },
+    {
+      "index": 205,
+      "style": "Normal (Web)",
+      "text": "11.         body.put(\"status\", HttpStatus.INTERNAL_SERVER_ERROR.value());"
+    },
+    {
+      "index": 206,
+      "style": "Normal (Web)",
+      "text": "12.         body.put(\"error\", \"Error Interno del Servidor\");"
+    },
+    {
+      "index": 207,
+      "style": "Normal (Web)",
+      "text": "13.         body.put(\"message\", ex.getMessage());"
+    },
+    {
+      "index": 208,
+      "style": "Normal (Web)",
+      "text": "14."
+    },
+    {
+      "index": 209,
+      "style": "Normal (Web)",
+      "text": "15.         return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);"
+    },
+    {
+      "index": 210,
+      "style": "Normal (Web)",
+      "text": "16.     }"
+    },
+    {
+      "index": 211,
+      "style": "Normal (Web)",
+      "text": "17. }"
+    },
+    {
+      "index": 212,
+      "style": "Normal (Web)",
+      "text": "18."
+    },
+    {
+      "index": 214,
+      "style": "Caption",
+      "text": "Figura 4"
+    },
+    {
+      "index": 215,
+      "style": "Caption",
+      "text": "un error JSON bien formateado debido a una petición inválida"
+    },
+    {
+      "index": 218,
+      "style": "Heading 1",
+      "text": "Transacciones para Operaciones de Consistencia (ACID)"
+    },
+    {
+      "index": 219,
+      "style": "Normal",
+      "text": "Finalidad: Proteger la integridad relacional de la base de datos, evitando escenarios donde una operación se ejecute a medias. Parte del proyecto: Método de despacho masivo en UnidadBomberilService.java. Explicación: Utilizando la directiva @Transactional del framework Spring, se instruye al motor de persistencia a tratar el bloque de código del Algoritmo 5 como atómico. Si durante la asignación iterativa de múltiples unidades ocurre una excepción severa, el controlador revierte los cambios, dejando los saldos o estados originales intactos."
+    },
+    {
+      "index": 220,
+      "style": "Caption",
+      "text": "Algoritmo 5"
+    },
+    {
+      "index": 221,
+      "style": "Caption",
+      "text": "Modificador transaccional para el despacho de recursos"
+    },
+    {
+      "index": 222,
+      "style": "Normal (Web)",
+      "text": "1. @Transactional"
+    },
+    {
+      "index": 223,
+      "style": "Normal (Web)",
+      "text": "2. public Map<String, Object> despacharUnidades(Long reporteId, List<Long> unidadIds) {"
+    },
+    {
+      "index": 224,
+      "style": "Normal (Web)",
+      "text": "3.     ReporteCiudadano reporte = reporteRepository.findById(reporteId).orElseThrow();"
+    },
+    {
+      "index": 225,
+      "style": "Normal (Web)",
+      "text": "4."
+    },
+    {
+      "index": 226,
+      "style": "Normal (Web)",
+      "text": "5.     for (Long uId : unidadIds) {"
+    },
+    {
+      "index": 227,
+      "style": "Normal (Web)",
+      "text": "6.         UnidadBomberil unidad = unidadRepository.findById(uId).orElseThrow();"
+    },
+    {
+      "index": 228,
+      "style": "Normal (Web)",
+      "text": "7.         unidad.setEstado(EstadoUnidad.EN_RUTA);"
+    },
+    {
+      "index": 229,
+      "style": "Normal (Web)",
+      "text": "8.         unidadRepository.save(unidad);"
+    },
+    {
+      "index": 230,
+      "style": "Normal (Web)",
+      "text": "9.     }"
+    },
+    {
+      "index": 231,
+      "style": "Normal (Web)",
+      "text": "10.     // Si falla en cualquier iteración, ningún cambio se aplicará a la base de datos real."
+    },
+    {
+      "index": 232,
+      "style": "Normal (Web)",
+      "text": "11.     // ..."
+    },
+    {
+      "index": 233,
+      "style": "Normal (Web)",
+      "text": "12. }"
+    },
+    {
+      "index": 234,
+      "style": "Normal (Web)",
+      "text": "13."
+    },
+    {
+      "index": 236,
+      "style": "Heading 1",
+      "text": "Estado actual del proyecto"
+    },
+    {
+      "index": 237,
+      "style": "Normal",
+      "text": "La aplicación actual refleja un producto de software robusto con alto grado de madurez en su arquitectura de software, contando con la mayoría de sus módulos operativos."
+    },
+    {
+      "index": 242,
+      "style": "Caption",
+      "text": "Tabla 1"
+    },
+    {
+      "index": 243,
+      "style": "Caption",
+      "text": "Estado Actual"
+    },
+    {
+      "index": 245,
+      "style": "Caption",
+      "text": "Figura 5"
+    },
+    {
+      "index": 246,
+      "style": "Caption",
+      "text": "Reporte Ciudadano"
+    },
+    {
+      "index": 250,
+      "style": "Caption",
+      "text": "Figura 6"
+    },
+    {
+      "index": 251,
+      "style": "Caption",
+      "text": "Interacción de tecnologías"
+    },
+    {
+      "index": 253,
+      "style": "Caption",
+      "text": "Figura 7"
+    },
+    {
+      "index": 254,
+      "style": "Caption",
+      "text": "Bloquea peticiones de usuarios sin credenciales"
+    },
+    {
+      "index": 262,
+      "style": "Caption",
+      "text": "Figura 8"
+    },
+    {
+      "index": 263,
+      "style": "Caption",
+      "text": "Tópicos de mensajería asíncrona"
+    },
+    {
+      "index": 266,
+      "style": "Caption",
+      "text": "Figura 9"
+    },
+    {
+      "index": 267,
+      "style": "Caption",
+      "text": "Implementación @Async"
+    },
+    {
+      "index": 271,
+      "style": "Heading 1",
+      "text": "Resultados actuales"
+    },
+    {
+      "index": 272,
+      "style": "Normal",
+      "text": "Las pruebas realizadas en el entorno de desarrollo local validaron el diseño arquitectónico propuesto. A nivel funcional, el sistema gestiona un ciclo completo sin fallos críticos: el ciudadano emite la alerta, el servidor Spring Boot la procesa y notifica inmediatamente a la central."
+    },
+    {
+      "index": 274,
+      "style": "Normal",
+      "text": "El resultado más significativo se observa en los tiempos de respuesta, los cuales disminuyeron drásticamente mediante la ejecución paralela; el usuario percibe el reporte como finalizado instantáneamente mientras el sistema I/O deposita físicamente el flujo binario video e imágenes en el disco duro."
+    },
+    {
+      "index": 276,
+      "style": "Normal",
+      "text": "Adicionalmente, se comprobaron las medidas de seguridad perimetral. En la Figura 10, se demuestra cómo el JwtValidationFilter intercepta exitosamente un intento de despacho malicioso (sin token válido), devolviendo una excepción controlada, manteniendo la integridad del backend completamente a salvo. Las pruebas unitarias y de estrés realizadas validaron que los Logs en la terminal imprimen correctamente la traza de eventos de cada unidad despachada."
+    },
+    {
+      "index": 277,
+      "style": "Caption",
+      "text": "Figura 10"
+    },
+    {
+      "index": 278,
+      "style": "Caption",
+      "text": "log de la aplicación Spring Boot procesando tareas concurrentes y el rechazo de peticiones no autorizada"
+    },
+    {
+      "index": 281,
+      "style": "Heading 1",
+      "text": "Resultados esperados"
+    },
+    {
+      "index": 282,
+      "style": "Normal",
+      "text": "La evolución tecnológica planificada para la Central de Bomberos expandirá su cobertura hacia nuevos frentes, estableciendo los siguientes requerimientos no funcionales y metas a futuro:"
+    },
+    {
+      "index": 283,
+      "style": "List Paragraph",
+      "text": "Integración con Hardware IoT: Se contempla el desarrollo y conexión de dispositivos con sensores especializados de temperatura extrema, concentración de CO2 y humos tóxicos. Estos módulos IoT, operando de manera asíncrona, verificarán de forma autónoma si una vivienda es habitable luego de que un incendio ha sido mitigado. Su dictamen será emitido directamente como un payload hacia el servidor backend y registrado de forma inmutable en la bitácora central de la emergencia."
+    },
+    {
+      "index": 284,
+      "style": "List Paragraph",
+      "text": "Despliegue Móvil Nativo (APK): Las cuadrillas en ruta y el personal operativo requerirán una versión portátil de la central. A futuro, se espera envolver el cliente web actual o refactorizarlo para producir un paquete nativo instalable de Android APK, permitiéndoles reportar llegadas al sitio y cierres de incidentes desde los vehículos bomberiles con acceso a la red de telefonía celular."
+    },
+    {
+      "index": 285,
+      "style": "List Paragraph",
+      "text": "Despliegue Multi-Nodo: Trasladar la aplicación de un entorno de pruebas a una infraestructura en la nube real. El servicio de Spring Boot se paquetizará en contenedores Docker y se orquestará mediante balanceadores de carga, permitiendo procesar concurrencias masivas a nivel de ciudad."
+    },
+    {
+      "index": 286,
+      "style": "Heading 1",
+      "text": "Conclusiones parciales"
+    },
+    {
+      "index": 287,
+      "style": "Normal",
+      "text": "La segmentación arquitectónica lograda al separar el Servicio de Identidad del Servicio de Negocio Central comprobó que el enfoque de microservicios promueve un código más limpio, escalable y mantenible. Esta modularidad previene cuellos de botella que típicamente aquejan a los sistemas monolíticos heredados."
+    },
+    {
+      "index": 288,
+      "style": "Normal",
+      "text": "La integración transversal del protocolo WebSocket para comunicación full-duplex superó categóricamente a la latencia tradicional del protocolo HTTP REST. Proveer al dashboard de la central con notificaciones en vivo transforma una aplicación pasiva en una herramienta táctica crítica para la toma de decisiones rápidas."
+    },
+    {
+      "index": 289,
+      "style": "Normal",
+      "text": "El uso estricto del estándar JSON Web Token demostró ser un mecanismo infalible para proteger infraestructuras distribuidas. Al delegar la firma del token a un sistema OAuth y su verificación matemática a filtros sin estado en Java, el sistema alcanzó niveles corporativos de seguridad sin sacrificar recursos de almacenamiento para mantener sesiones de red activas."
+    },
+    {
+      "index": 290,
+      "style": "Heading 1",
+      "text": "Referencias bibliográficas"
+    },
+    {
+      "index": 291,
+      "style": "Normal",
+      "text": "Chen, H., Wang, L., & Zhao, X. (2020). Distributed Transaction Management in Microservices Architecture. International Conference on Cloud Computing, 88-95."
+    },
+    {
+      "index": 292,
+      "style": "Normal",
+      "text": "Coulouris, G., Dollimore, J., Kindberg, T., & Blair, G. (2021). Distributed Systems: Concepts and Design. Pearson Education."
+    },
+    {
+      "index": 293,
+      "style": "Normal",
+      "text": "Jones, M., & Bradley, J. (2021). Security best practices for OAuth 2.0 and JSON Web Tokens. IEEE Security & Privacy, 19(4), 45-53."
+    },
+    {
+      "index": 294,
+      "style": "Normal",
+      "text": "Luo, X., & Li, Y. (2022). Real-Time Web Application Architecture Using WebSockets. Journal of Web Engineering, 21(3), 112-128."
+    },
+    {
+      "index": 295,
+      "style": "Normal",
+      "text": "Newman, S. (2021). Building Microservices: Designing Fine-Grained Systems. O'Reilly Media."
+    },
+    {
+      "index": 296,
+      "style": "Normal",
+      "text": "Smith, J. (2023). High-Performance Concurrency in Modern Java. O'Reilly Media."
+    },
+    {
+      "index": 299,
+      "style": "Heading 1",
+      "text": "Anexos"
+    },
+    {
+      "index": 300,
+      "style": "Normal",
+      "text": "Link al repositorio:https://github.com/Joseph-Franco692/Proyecto_Emergencias_jf.git"
+    }
+  ],
+  "tables": [
+    {
+      "index": 0,
+      "rows": [
+        [
+          "Componente",
+          "Estado",
+          "Evidencia",
+          "Observación"
+        ],
+        [
+          "Módulo Ciudadano (Angular)",
+          "Terminado",
+          "Figura 5",
+          "Interfaz pública para captura de ubicación y subida de reportes sin necesidad de login."
+        ],
+        [
+          "Autenticación Distribuida",
+          "Terminado",
+          "Figura 6",
+          "Interacción Angular <-> Node.js exitosa, emitiendo JWT cifrados vía OAuth 2.0."
+        ],
+        [
+          "Protección Stateless JWT",
+          "Terminado",
+          "Figura 7",
+          "El filtro de red interrumpe y bloquea peticiones de usuarios sin credenciales."
+        ],
+        [
+          "Notificaciones WebSocket",
+          "Terminado",
+          "Figura 8",
+          "Tópicos de mensajería asíncrona operativos y vinculados a componentes visuales."
+        ],
+        [
+          "Procesamiento de Archivos",
+          "Terminado",
+          "Figura 9",
+          "Implementación @Async totalmente funcional validada a través de logs de terminal."
+        ],
+        [
+          "Integración Dispositivos IoT",
+          "Pendiente",
+          "—",
+          "Se abordará en el plan de expansión post-despliegue del sistema principal."
+        ],
+        [
+          "Consumo a través de APK",
+          "Pendiente",
+          "—",
+          "Refactorización de Angular hacia Ionic o Flutter programada para la siguiente fase."
+        ]
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "index": 0,
+      "page_width": 7773670,
+      "page_height": 10059670,
+      "top_margin": 914400,
+      "bottom_margin": 914400,
+      "left_margin": 914400,
+      "right_margin": 914400,
+      "different_first_page": true
+    }
+  ],
+  "styles": {
+    "Normal": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": null
+    },
+    "Heading 1": {
+      "font_name": null,
+      "font_size": null,
+      "bold": true,
+      "italic": null,
+      "alignment": 1,
+      "space_before": 20.0,
+      "space_after": 6.0,
+      "line_spacing": null
+    },
+    "Heading 2": {
+      "font_name": null,
+      "font_size": null,
+      "bold": true,
+      "italic": null,
+      "alignment": null,
+      "space_before": 18.0,
+      "space_after": 6.0,
+      "line_spacing": null
+    },
+    "Heading 3": {
+      "font_name": null,
+      "font_size": null,
+      "bold": true,
+      "italic": true,
+      "alignment": null,
+      "space_before": 16.0,
+      "space_after": 4.0,
+      "line_spacing": null
+    },
+    "Heading 4": {
+      "font_name": null,
+      "font_size": null,
+      "bold": true,
+      "italic": null,
+      "alignment": null,
+      "space_before": 14.0,
+      "space_after": 4.0,
+      "line_spacing": null
+    },
+    "Heading 5": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": 12.0,
+      "space_after": 4.0,
+      "line_spacing": null
+    },
+    "Heading 6": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": true,
+      "alignment": null,
+      "space_before": 12.0,
+      "space_after": 4.0,
+      "line_spacing": null
+    },
+    "Title": {
+      "font_name": null,
+      "font_size": null,
+      "bold": true,
+      "italic": null,
+      "alignment": null,
+      "space_before": null,
+      "space_after": 3.0,
+      "line_spacing": null
+    },
+    "Subtitle": {
+      "font_name": null,
+      "font_size": 15.0,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": null,
+      "space_after": 16.0,
+      "line_spacing": null
+    },
+    "Caption": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": 6.0,
+      "space_after": 16.0,
+      "line_spacing": 1.0
+    },
+    "No Spacing": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": 1.0
+    },
+    "TOC Heading": {
+      "font_name": null,
+      "font_size": 16.0,
+      "bold": false,
+      "italic": null,
+      "alignment": 0,
+      "space_before": 12.0,
+      "space_after": null,
+      "line_spacing": 1.0791666666666666
+    },
+    "toc 1": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": null,
+      "space_after": 5.0,
+      "line_spacing": null
+    },
+    "toc 2": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": null,
+      "space_after": 5.0,
+      "line_spacing": null
+    },
+    "toc 3": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": null,
+      "space_after": 5.0,
+      "line_spacing": null
+    },
+    "List Paragraph": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": null
+    },
+    "Header": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": 1.0
+    },
+    "Footer": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": 1.0
+    },
+    "Bibliography": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": null
+    },
+    "Normal (Web)": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "alignment": null,
+      "space_before": 5.0,
+      "space_after": 5.0,
+      "line_spacing": 1.0
+    }
+  },
+  "body_order": [
+    {
+      "kind": "paragraph",
+      "index": 0
+    },
+    {
+      "kind": "paragraph",
+      "index": 1
+    },
+    {
+      "kind": "paragraph",
+      "index": 2
+    },
+    {
+      "kind": "paragraph",
+      "index": 3
+    },
+    {
+      "kind": "paragraph",
+      "index": 4
+    },
+    {
+      "kind": "paragraph",
+      "index": 5
+    },
+    {
+      "kind": "paragraph",
+      "index": 6
+    },
+    {
+      "kind": "paragraph",
+      "index": 7
+    },
+    {
+      "kind": "paragraph",
+      "index": 8
+    },
+    {
+      "kind": "paragraph",
+      "index": 9
+    },
+    {
+      "kind": "paragraph",
+      "index": 10
+    },
+    {
+      "kind": "paragraph",
+      "index": 11
+    },
+    {
+      "kind": "paragraph",
+      "index": 12
+    },
+    {
+      "kind": "paragraph",
+      "index": 13
+    },
+    {
+      "kind": "paragraph",
+      "index": 14
+    },
+    {
+      "kind": "paragraph",
+      "index": 15
+    },
+    {
+      "kind": "paragraph",
+      "index": 16
+    },
+    {
+      "kind": "paragraph",
+      "index": 17
+    },
+    {
+      "kind": "paragraph",
+      "index": 18
+    },
+    {
+      "kind": "paragraph",
+      "index": 19
+    },
+    {
+      "kind": "paragraph",
+      "index": 20
+    },
+    {
+      "kind": "paragraph",
+      "index": 21
+    },
+    {
+      "kind": "paragraph",
+      "index": 22
+    },
+    {
+      "kind": "paragraph",
+      "index": 23
+    },
+    {
+      "kind": "paragraph",
+      "index": 24
+    },
+    {
+      "kind": "paragraph",
+      "index": 25
+    },
+    {
+      "kind": "paragraph",
+      "index": 26
+    },
+    {
+      "kind": "paragraph",
+      "index": 27
+    },
+    {
+      "kind": "paragraph",
+      "index": 28
+    },
+    {
+      "kind": "paragraph",
+      "index": 29
+    },
+    {
+      "kind": "paragraph",
+      "index": 30
+    },
+    {
+      "kind": "paragraph",
+      "index": 31
+    },
+    {
+      "kind": "paragraph",
+      "index": 32
+    },
+    {
+      "kind": "paragraph",
+      "index": 33
+    },
+    {
+      "kind": "paragraph",
+      "index": 34
+    },
+    {
+      "kind": "paragraph",
+      "index": 35
+    },
+    {
+      "kind": "paragraph",
+      "index": 36
+    },
+    {
+      "kind": "paragraph",
+      "index": 37
+    },
+    {
+      "kind": "paragraph",
+      "index": 38
+    },
+    {
+      "kind": "paragraph",
+      "index": 39
+    },
+    {
+      "kind": "paragraph",
+      "index": 40
+    },
+    {
+      "kind": "paragraph",
+      "index": 41
+    },
+    {
+      "kind": "paragraph",
+      "index": 42
+    },
+    {
+      "kind": "paragraph",
+      "index": 43
+    },
+    {
+      "kind": "paragraph",
+      "index": 44
+    },
+    {
+      "kind": "paragraph",
+      "index": 45
+    },
+    {
+      "kind": "paragraph",
+      "index": 46
+    },
+    {
+      "kind": "paragraph",
+      "index": 47
+    },
+    {
+      "kind": "paragraph",
+      "index": 48
+    },
+    {
+      "kind": "paragraph",
+      "index": 49
+    },
+    {
+      "kind": "paragraph",
+      "index": 50
+    },
+    {
+      "kind": "paragraph",
+      "index": 51
+    },
+    {
+      "kind": "paragraph",
+      "index": 52
+    },
+    {
+      "kind": "paragraph",
+      "index": 53
+    },
+    {
+      "kind": "paragraph",
+      "index": 54
+    },
+    {
+      "kind": "paragraph",
+      "index": 55
+    },
+    {
+      "kind": "paragraph",
+      "index": 56
+    },
+    {
+      "kind": "paragraph",
+      "index": 57
+    },
+    {
+      "kind": "paragraph",
+      "index": 58
+    },
+    {
+      "kind": "paragraph",
+      "index": 59
+    },
+    {
+      "kind": "paragraph",
+      "index": 60
+    },
+    {
+      "kind": "paragraph",
+      "index": 61
+    },
+    {
+      "kind": "paragraph",
+      "index": 62
+    },
+    {
+      "kind": "paragraph",
+      "index": 63
+    },
+    {
+      "kind": "paragraph",
+      "index": 64
+    },
+    {
+      "kind": "paragraph",
+      "index": 65
+    },
+    {
+      "kind": "paragraph",
+      "index": 66
+    },
+    {
+      "kind": "paragraph",
+      "index": 67
+    },
+    {
+      "kind": "paragraph",
+      "index": 68
+    },
+    {
+      "kind": "paragraph",
+      "index": 69
+    },
+    {
+      "kind": "paragraph",
+      "index": 70
+    },
+    {
+      "kind": "paragraph",
+      "index": 71
+    },
+    {
+      "kind": "paragraph",
+      "index": 72
+    },
+    {
+      "kind": "paragraph",
+      "index": 73
+    },
+    {
+      "kind": "paragraph",
+      "index": 74
+    },
+    {
+      "kind": "paragraph",
+      "index": 75
+    },
+    {
+      "kind": "paragraph",
+      "index": 76
+    },
+    {
+      "kind": "paragraph",
+      "index": 77
+    },
+    {
+      "kind": "paragraph",
+      "index": 78
+    },
+    {
+      "kind": "paragraph",
+      "index": 79
+    },
+    {
+      "kind": "paragraph",
+      "index": 80
+    },
+    {
+      "kind": "paragraph",
+      "index": 81
+    },
+    {
+      "kind": "paragraph",
+      "index": 82
+    },
+    {
+      "kind": "paragraph",
+      "index": 83
+    },
+    {
+      "kind": "paragraph",
+      "index": 84
+    },
+    {
+      "kind": "paragraph",
+      "index": 85
+    },
+    {
+      "kind": "paragraph",
+      "index": 86
+    },
+    {
+      "kind": "paragraph",
+      "index": 87
+    },
+    {
+      "kind": "paragraph",
+      "index": 88
+    },
+    {
+      "kind": "paragraph",
+      "index": 89
+    },
+    {
+      "kind": "paragraph",
+      "index": 90
+    },
+    {
+      "kind": "paragraph",
+      "index": 91
+    },
+    {
+      "kind": "paragraph",
+      "index": 92
+    },
+    {
+      "kind": "paragraph",
+      "index": 93
+    },
+    {
+      "kind": "paragraph",
+      "index": 94
+    },
+    {
+      "kind": "paragraph",
+      "index": 95
+    },
+    {
+      "kind": "paragraph",
+      "index": 96
+    },
+    {
+      "kind": "paragraph",
+      "index": 97
+    },
+    {
+      "kind": "paragraph",
+      "index": 98
+    },
+    {
+      "kind": "paragraph",
+      "index": 99
+    },
+    {
+      "kind": "paragraph",
+      "index": 100
+    },
+    {
+      "kind": "paragraph",
+      "index": 101
+    },
+    {
+      "kind": "paragraph",
+      "index": 102
+    },
+    {
+      "kind": "paragraph",
+      "index": 103
+    },
+    {
+      "kind": "paragraph",
+      "index": 104
+    },
+    {
+      "kind": "paragraph",
+      "index": 105
+    },
+    {
+      "kind": "paragraph",
+      "index": 106
+    },
+    {
+      "kind": "paragraph",
+      "index": 107
+    },
+    {
+      "kind": "paragraph",
+      "index": 108
+    },
+    {
+      "kind": "paragraph",
+      "index": 109
+    },
+    {
+      "kind": "paragraph",
+      "index": 110
+    },
+    {
+      "kind": "paragraph",
+      "index": 111
+    },
+    {
+      "kind": "paragraph",
+      "index": 112
+    },
+    {
+      "kind": "paragraph",
+      "index": 113
+    },
+    {
+      "kind": "paragraph",
+      "index": 114
+    },
+    {
+      "kind": "paragraph",
+      "index": 115
+    },
+    {
+      "kind": "paragraph",
+      "index": 116
+    },
+    {
+      "kind": "paragraph",
+      "index": 117
+    },
+    {
+      "kind": "paragraph",
+      "index": 118
+    },
+    {
+      "kind": "paragraph",
+      "index": 119
+    },
+    {
+      "kind": "paragraph",
+      "index": 120
+    },
+    {
+      "kind": "paragraph",
+      "index": 121
+    },
+    {
+      "kind": "paragraph",
+      "index": 122
+    },
+    {
+      "kind": "paragraph",
+      "index": 123
+    },
+    {
+      "kind": "paragraph",
+      "index": 124
+    },
+    {
+      "kind": "paragraph",
+      "index": 125
+    },
+    {
+      "kind": "paragraph",
+      "index": 126
+    },
+    {
+      "kind": "paragraph",
+      "index": 127
+    },
+    {
+      "kind": "paragraph",
+      "index": 128
+    },
+    {
+      "kind": "paragraph",
+      "index": 129
+    },
+    {
+      "kind": "paragraph",
+      "index": 130
+    },
+    {
+      "kind": "paragraph",
+      "index": 131
+    },
+    {
+      "kind": "paragraph",
+      "index": 132
+    },
+    {
+      "kind": "paragraph",
+      "index": 133
+    },
+    {
+      "kind": "paragraph",
+      "index": 134
+    },
+    {
+      "kind": "paragraph",
+      "index": 135
+    },
+    {
+      "kind": "paragraph",
+      "index": 136
+    },
+    {
+      "kind": "paragraph",
+      "index": 137
+    },
+    {
+      "kind": "paragraph",
+      "index": 138
+    },
+    {
+      "kind": "paragraph",
+      "index": 139
+    },
+    {
+      "kind": "paragraph",
+      "index": 140
+    },
+    {
+      "kind": "paragraph",
+      "index": 141
+    },
+    {
+      "kind": "paragraph",
+      "index": 142
+    },
+    {
+      "kind": "paragraph",
+      "index": 143
+    },
+    {
+      "kind": "paragraph",
+      "index": 144
+    },
+    {
+      "kind": "paragraph",
+      "index": 145
+    },
+    {
+      "kind": "paragraph",
+      "index": 146
+    },
+    {
+      "kind": "paragraph",
+      "index": 147
+    },
+    {
+      "kind": "paragraph",
+      "index": 148
+    },
+    {
+      "kind": "paragraph",
+      "index": 149
+    },
+    {
+      "kind": "paragraph",
+      "index": 150
+    },
+    {
+      "kind": "paragraph",
+      "index": 151
+    },
+    {
+      "kind": "paragraph",
+      "index": 152
+    },
+    {
+      "kind": "paragraph",
+      "index": 153
+    },
+    {
+      "kind": "paragraph",
+      "index": 154
+    },
+    {
+      "kind": "paragraph",
+      "index": 155
+    },
+    {
+      "kind": "paragraph",
+      "index": 156
+    },
+    {
+      "kind": "paragraph",
+      "index": 157
+    },
+    {
+      "kind": "paragraph",
+      "index": 158
+    },
+    {
+      "kind": "paragraph",
+      "index": 159
+    },
+    {
+      "kind": "paragraph",
+      "index": 160
+    },
+    {
+      "kind": "paragraph",
+      "index": 161
+    },
+    {
+      "kind": "paragraph",
+      "index": 162
+    },
+    {
+      "kind": "paragraph",
+      "index": 163
+    },
+    {
+      "kind": "paragraph",
+      "index": 164
+    },
+    {
+      "kind": "paragraph",
+      "index": 165
+    },
+    {
+      "kind": "paragraph",
+      "index": 166
+    },
+    {
+      "kind": "paragraph",
+      "index": 167
+    },
+    {
+      "kind": "paragraph",
+      "index": 168
+    },
+    {
+      "kind": "paragraph",
+      "index": 169
+    },
+    {
+      "kind": "paragraph",
+      "index": 170
+    },
+    {
+      "kind": "paragraph",
+      "index": 171
+    },
+    {
+      "kind": "paragraph",
+      "index": 172
+    },
+    {
+      "kind": "paragraph",
+      "index": 173
+    },
+    {
+      "kind": "paragraph",
+      "index": 174
+    },
+    {
+      "kind": "paragraph",
+      "index": 175
+    },
+    {
+      "kind": "paragraph",
+      "index": 176
+    },
+    {
+      "kind": "paragraph",
+      "index": 177
+    },
+    {
+      "kind": "paragraph",
+      "index": 178
+    },
+    {
+      "kind": "paragraph",
+      "index": 179
+    },
+    {
+      "kind": "paragraph",
+      "index": 180
+    },
+    {
+      "kind": "paragraph",
+      "index": 181
+    },
+    {
+      "kind": "paragraph",
+      "index": 182
+    },
+    {
+      "kind": "paragraph",
+      "index": 183
+    },
+    {
+      "kind": "paragraph",
+      "index": 184
+    },
+    {
+      "kind": "paragraph",
+      "index": 185
+    },
+    {
+      "kind": "paragraph",
+      "index": 186
+    },
+    {
+      "kind": "paragraph",
+      "index": 187
+    },
+    {
+      "kind": "paragraph",
+      "index": 188
+    },
+    {
+      "kind": "paragraph",
+      "index": 189
+    },
+    {
+      "kind": "paragraph",
+      "index": 190
+    },
+    {
+      "kind": "paragraph",
+      "index": 191
+    },
+    {
+      "kind": "paragraph",
+      "index": 192
+    },
+    {
+      "kind": "paragraph",
+      "index": 193
+    },
+    {
+      "kind": "paragraph",
+      "index": 194
+    },
+    {
+      "kind": "paragraph",
+      "index": 195
+    },
+    {
+      "kind": "paragraph",
+      "index": 196
+    },
+    {
+      "kind": "paragraph",
+      "index": 197
+    },
+    {
+      "kind": "paragraph",
+      "index": 198
+    },
+    {
+      "kind": "paragraph",
+      "index": 199
+    },
+    {
+      "kind": "paragraph",
+      "index": 200
+    },
+    {
+      "kind": "paragraph",
+      "index": 201
+    },
+    {
+      "kind": "paragraph",
+      "index": 202
+    },
+    {
+      "kind": "paragraph",
+      "index": 203
+    },
+    {
+      "kind": "paragraph",
+      "index": 204
+    },
+    {
+      "kind": "paragraph",
+      "index": 205
+    },
+    {
+      "kind": "paragraph",
+      "index": 206
+    },
+    {
+      "kind": "paragraph",
+      "index": 207
+    },
+    {
+      "kind": "paragraph",
+      "index": 208
+    },
+    {
+      "kind": "paragraph",
+      "index": 209
+    },
+    {
+      "kind": "paragraph",
+      "index": 210
+    },
+    {
+      "kind": "paragraph",
+      "index": 211
+    },
+    {
+      "kind": "paragraph",
+      "index": 212
+    },
+    {
+      "kind": "paragraph",
+      "index": 213
+    },
+    {
+      "kind": "paragraph",
+      "index": 214
+    },
+    {
+      "kind": "paragraph",
+      "index": 215
+    },
+    {
+      "kind": "paragraph",
+      "index": 216
+    },
+    {
+      "kind": "paragraph",
+      "index": 217
+    },
+    {
+      "kind": "paragraph",
+      "index": 218
+    },
+    {
+      "kind": "paragraph",
+      "index": 219
+    },
+    {
+      "kind": "paragraph",
+      "index": 220
+    },
+    {
+      "kind": "paragraph",
+      "index": 221
+    },
+    {
+      "kind": "paragraph",
+      "index": 222
+    },
+    {
+      "kind": "paragraph",
+      "index": 223
+    },
+    {
+      "kind": "paragraph",
+      "index": 224
+    },
+    {
+      "kind": "paragraph",
+      "index": 225
+    },
+    {
+      "kind": "paragraph",
+      "index": 226
+    },
+    {
+      "kind": "paragraph",
+      "index": 227
+    },
+    {
+      "kind": "paragraph",
+      "index": 228
+    },
+    {
+      "kind": "paragraph",
+      "index": 229
+    },
+    {
+      "kind": "paragraph",
+      "index": 230
+    },
+    {
+      "kind": "paragraph",
+      "index": 231
+    },
+    {
+      "kind": "paragraph",
+      "index": 232
+    },
+    {
+      "kind": "paragraph",
+      "index": 233
+    },
+    {
+      "kind": "paragraph",
+      "index": 234
+    },
+    {
+      "kind": "paragraph",
+      "index": 235
+    },
+    {
+      "kind": "paragraph",
+      "index": 236
+    },
+    {
+      "kind": "paragraph",
+      "index": 237
+    },
+    {
+      "kind": "paragraph",
+      "index": 238
+    },
+    {
+      "kind": "paragraph",
+      "index": 239
+    },
+    {
+      "kind": "paragraph",
+      "index": 240
+    },
+    {
+      "kind": "paragraph",
+      "index": 241
+    },
+    {
+      "kind": "paragraph",
+      "index": 242
+    },
+    {
+      "kind": "paragraph",
+      "index": 243
+    },
+    {
+      "kind": "table",
+      "index": 0
+    },
+    {
+      "kind": "paragraph",
+      "index": 244
+    },
+    {
+      "kind": "paragraph",
+      "index": 245
+    },
+    {
+      "kind": "paragraph",
+      "index": 246
+    },
+    {
+      "kind": "paragraph",
+      "index": 247
+    },
+    {
+      "kind": "paragraph",
+      "index": 248
+    },
+    {
+      "kind": "paragraph",
+      "index": 249
+    },
+    {
+      "kind": "paragraph",
+      "index": 250
+    },
+    {
+      "kind": "paragraph",
+      "index": 251
+    },
+    {
+      "kind": "paragraph",
+      "index": 252
+    },
+    {
+      "kind": "paragraph",
+      "index": 253
+    },
+    {
+      "kind": "paragraph",
+      "index": 254
+    },
+    {
+      "kind": "paragraph",
+      "index": 255
+    },
+    {
+      "kind": "paragraph",
+      "index": 256
+    },
+    {
+      "kind": "paragraph",
+      "index": 257
+    },
+    {
+      "kind": "paragraph",
+      "index": 258
+    },
+    {
+      "kind": "paragraph",
+      "index": 259
+    },
+    {
+      "kind": "paragraph",
+      "index": 260
+    },
+    {
+      "kind": "paragraph",
+      "index": 261
+    },
+    {
+      "kind": "paragraph",
+      "index": 262
+    },
+    {
+      "kind": "paragraph",
+      "index": 263
+    },
+    {
+      "kind": "paragraph",
+      "index": 264
+    },
+    {
+      "kind": "paragraph",
+      "index": 265
+    },
+    {
+      "kind": "paragraph",
+      "index": 266
+    },
+    {
+      "kind": "paragraph",
+      "index": 267
+    },
+    {
+      "kind": "paragraph",
+      "index": 268
+    },
+    {
+      "kind": "paragraph",
+      "index": 269
+    },
+    {
+      "kind": "paragraph",
+      "index": 270
+    },
+    {
+      "kind": "paragraph",
+      "index": 271
+    },
+    {
+      "kind": "paragraph",
+      "index": 272
+    },
+    {
+      "kind": "paragraph",
+      "index": 273
+    },
+    {
+      "kind": "paragraph",
+      "index": 274
+    },
+    {
+      "kind": "paragraph",
+      "index": 275
+    },
+    {
+      "kind": "paragraph",
+      "index": 276
+    },
+    {
+      "kind": "paragraph",
+      "index": 277
+    },
+    {
+      "kind": "paragraph",
+      "index": 278
+    },
+    {
+      "kind": "paragraph",
+      "index": 279
+    },
+    {
+      "kind": "paragraph",
+      "index": 280
+    },
+    {
+      "kind": "paragraph",
+      "index": 281
+    },
+    {
+      "kind": "paragraph",
+      "index": 282
+    },
+    {
+      "kind": "paragraph",
+      "index": 283
+    },
+    {
+      "kind": "paragraph",
+      "index": 284
+    },
+    {
+      "kind": "paragraph",
+      "index": 285
+    },
+    {
+      "kind": "paragraph",
+      "index": 286
+    },
+    {
+      "kind": "paragraph",
+      "index": 287
+    },
+    {
+      "kind": "paragraph",
+      "index": 288
+    },
+    {
+      "kind": "paragraph",
+      "index": 289
+    },
+    {
+      "kind": "paragraph",
+      "index": 290
+    },
+    {
+      "kind": "paragraph",
+      "index": 291
+    },
+    {
+      "kind": "paragraph",
+      "index": 292
+    },
+    {
+      "kind": "paragraph",
+      "index": 293
+    },
+    {
+      "kind": "paragraph",
+      "index": 294
+    },
+    {
+      "kind": "paragraph",
+      "index": 295
+    },
+    {
+      "kind": "paragraph",
+      "index": 296
+    },
+    {
+      "kind": "paragraph",
+      "index": 297
+    },
+    {
+      "kind": "paragraph",
+      "index": 298
+    },
+    {
+      "kind": "paragraph",
+      "index": 299
+    },
+    {
+      "kind": "paragraph",
+      "index": 300
+    },
+    {
+      "kind": "paragraph",
+      "index": 301
+    },
+    {
+      "kind": "paragraph",
+      "index": 302
+    }
+  ]
+}

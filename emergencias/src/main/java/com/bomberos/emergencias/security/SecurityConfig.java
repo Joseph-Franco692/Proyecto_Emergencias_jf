@@ -7,6 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -20,6 +21,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -41,15 +43,12 @@ public class SecurityConfig {
                     "/ws-emergencias",
                     "/ws/**",
                     "/uploads/**",
-                    "/api/reportes",
-                    "/api/reportes/**",
-                    "/api/unidades",
-                    "/api/unidades/**",
-                    "/api/iot",
-                    "/api/iot/**",
-                    "/api/ai",
-                    "/api/ai/**"
+                    "/api/iot/**"
                 ).permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/reportes").permitAll()
+                .requestMatchers(HttpMethod.GET,
+                        "/api/reportes/*/evidencias",
+                        "/api/reportes/evidencias/**").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

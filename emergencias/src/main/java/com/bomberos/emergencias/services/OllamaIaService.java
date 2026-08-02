@@ -12,6 +12,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -26,6 +27,9 @@ import java.util.regex.Pattern;
 /** Copiloto administrativo alimentado exclusivamente por PostgreSQL. */
 @Service
 public class OllamaIaService {
+    private static final int OLLAMA_CONNECT_TIMEOUT_MS = 5_000;
+    private static final int OLLAMA_READ_TIMEOUT_MS = 35_000;
+
     @Autowired private ReporteCiudadanoRepository reporteRepository;
     @Autowired private UnidadBomberilRepository unidadRepository;
     @Autowired private LecturaIotRepository lecturaIotRepository;
@@ -117,7 +121,7 @@ public class OllamaIaService {
             body.put("stream", false);
             body.put("options", Map.of("temperature", 0.25, "num_predict", 280));
 
-            ResponseEntity<Map> response = new RestTemplate().postForEntity(
+            ResponseEntity<Map> response = crearClienteOllama().postForEntity(
                     ollamaUrl, new HttpEntity<>(body, headers), Map.class);
             Object respuesta = response.getBody() == null ? null : response.getBody().get("response");
             String texto = respuesta == null ? "" : respuesta.toString().trim();
@@ -129,6 +133,14 @@ public class OllamaIaService {
             System.err.println("Ollama no disponible; se entrega respuesta verificada: " + error.getMessage());
         }
         return datosVerificados;
+    }
+
+    /** Evita que un modelo local lento bloquee indefinidamente al administrador. */
+    private RestTemplate crearClienteOllama() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(OLLAMA_CONNECT_TIMEOUT_MS);
+        factory.setReadTimeout(OLLAMA_READ_TIMEOUT_MS);
+        return new RestTemplate(factory);
     }
 
     private boolean respuestaValida(String respuesta) {

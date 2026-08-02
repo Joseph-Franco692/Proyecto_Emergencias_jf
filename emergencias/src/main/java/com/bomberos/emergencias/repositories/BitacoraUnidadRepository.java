@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface BitacoraUnidadRepository extends JpaRepository<BitacoraUnidad, Long> {
     List<BitacoraUnidad> findAllByOrderByFechaHoraDesc();
+    boolean existsByReporteId(Long reporteId);
 }

@@ -5,6 +5,5 @@
   (click)="themeService.toggle()"
   [attr.aria-label]="themeService.theme() === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'"
   [title]="themeService.theme() === 'dark' ? 'Modo claro' : 'Modo oscuro'">
-  <span class="theme-toggle__icon">{{ themeService.theme() === 'dark' ? '☀' : '☾' }}</span>
   <span class="theme-toggle__text">{{ themeService.theme() === 'dark' ? 'Claro' : 'Oscuro' }}</span>
 </button>

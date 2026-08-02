@@ -54,14 +54,50 @@
     <!-- ══ LOGIN MANUAL ══ -->
     <ng-container *ngIf="screen === 'manual'">
       <div class="form-group">
-        <input type="email" [(ngModel)]="email" placeholder="Correo electrónico" class="inp" (keyup.enter)="doLogin()">
-        <input type="password" [(ngModel)]="password" placeholder="Contraseña" class="inp" (keyup.enter)="doLogin()">
+        <input type="email" [(ngModel)]="email" maxlength="120" autocomplete="email" placeholder="Correo electrónico" class="inp" (keyup.enter)="doLogin()">
+        <input type="password" [(ngModel)]="password" maxlength="72" autocomplete="current-password" placeholder="Contraseña" class="inp" (keyup.enter)="doLogin()">
         <button class="btn-primary" [disabled]="isLoading" (click)="doLogin()">
           {{ isLoading ? 'Verificando...' : 'Iniciar Sesión' }}
         </button>
         <div class="form-links">
           <a (click)="goTo('register')">Crear cuenta</a>
+          <a (click)="goTo('forgotPassword')">¿Olvidaste tu contraseña?</a>
         </div>
+      </div>
+    </ng-container>
+
+    <!-- RECUPERAR CONTRASEÑA -->
+    <ng-container *ngIf="screen === 'forgotPassword'">
+      <p class="screen-title">Recupera tu acceso</p>
+      <p class="screen-sub">Te enviaremos un enlace seguro de un solo uso, válido durante 15 minutos.</p>
+      <div class="form-group">
+        <label class="input-label" for="recovery-email">Correo electrónico</label>
+        <input id="recovery-email" type="email" [(ngModel)]="email" maxlength="120"
+          autocomplete="email" placeholder="nombre@correo.com" class="inp"
+          (keyup.enter)="doRequestPasswordReset()">
+        <button class="btn-primary" [disabled]="isLoading" (click)="doRequestPasswordReset()">
+          {{ isLoading ? 'Enviando enlace...' : 'Enviar enlace de recuperación' }}
+        </button>
+        <button type="button" class="btn-ghost" (click)="goTo('manual')">← Volver al inicio de sesión</button>
+      </div>
+    </ng-container>
+
+    <!-- CREAR NUEVA CONTRASEÑA -->
+    <ng-container *ngIf="screen === 'resetPassword'">
+      <p class="screen-title">Crea una nueva contraseña</p>
+      <p class="screen-sub">Debe contener al menos ocho caracteres, una letra y un número.</p>
+      <div class="form-group">
+        <label class="input-label" for="new-password">Nueva contraseña</label>
+        <input id="new-password" type="password" [(ngModel)]="password" maxlength="72"
+          autocomplete="new-password" placeholder="Nueva contraseña" class="inp">
+        <label class="input-label" for="confirm-password">Confirmar contraseña</label>
+        <input id="confirm-password" type="password" [(ngModel)]="confirmPassword" maxlength="72"
+          autocomplete="new-password" placeholder="Repite la contraseña" class="inp"
+          (keyup.enter)="doResetPassword()">
+        <button class="btn-primary" [disabled]="isLoading" (click)="doResetPassword()">
+          {{ isLoading ? 'Actualizando...' : 'Guardar nueva contraseña' }}
+        </button>
+        <button type="button" class="btn-ghost" (click)="goTo('manual')">Cancelar</button>
       </div>
     </ng-container>
 
@@ -69,9 +105,9 @@
     <ng-container *ngIf="screen === 'register'">
       <p class="screen-title">Crear cuenta de Operador</p>
       <div class="form-group">
-        <input type="text"     [(ngModel)]="name"     placeholder="Nombre completo"   class="inp">
-        <input type="email"    [(ngModel)]="email"    placeholder="Correo electrónico" class="inp">
-        <input type="password" [(ngModel)]="password" placeholder="Contraseña"         class="inp" (keyup.enter)="doRegister()">
+        <input type="text" [(ngModel)]="name" maxlength="80" autocomplete="name" placeholder="Nombre completo" class="inp">
+        <input type="email" [(ngModel)]="email" maxlength="120" autocomplete="email" placeholder="Correo electrónico" class="inp">
+        <input type="password" [(ngModel)]="password" maxlength="72" autocomplete="new-password" placeholder="Contraseña" class="inp" (keyup.enter)="doRegister()">
         <button class="btn-primary" [disabled]="isLoading" (click)="doRegister()">
           {{ isLoading ? 'Enviando código...' : 'Registrarse' }}
         </button>
@@ -84,11 +120,14 @@
       <p class="screen-title">Verifica tu cuenta</p>
       <p class="screen-sub">Ingresa el código de 6 dígitos enviado a <strong>{{ email }}</strong></p>
       <div class="form-group">
-        <input type="email" [(ngModel)]="email" placeholder="Tu correo electrónico" class="inp" style="font-size:0.9rem;">
-        <input type="text" [(ngModel)]="code" maxlength="6" placeholder="000000" class="inp inp-code" (keyup.enter)="doVerifyAccount()">
-        <button class="btn-primary" [disabled]="isLoading" (click)="doVerifyAccount()">
+        <input type="email" [(ngModel)]="email" placeholder="Tu correo electrónico" autocomplete="email" class="inp" style="font-size:0.9rem;">
+        <input type="text" [(ngModel)]="code" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
+               placeholder="000000" class="inp inp-code" (input)="normalizeVerificationCode()"
+               (keyup.enter)="doVerifyAccount()">
+        <button type="button" class="btn-primary" [disabled]="isLoading || code.length !== 6" (click)="doVerifyAccount()">
           {{ isLoading ? 'Verificando...' : 'Activar Cuenta' }}
         </button>
+        <div class="login-error login-error-inline" *ngIf="error && !isLoading">{{ error }}</div>
         <div class="form-links">
           <a (click)="doResendCode()">Reenviar código</a>
           <a (click)="goTo('manual')">Ya tengo cuenta</a>
@@ -126,7 +165,7 @@
 
     <!-- ══ VINCULACIÓN A CÓDIGO DE ZONA DEL ADMIN ══ -->
     <ng-container *ngIf="screen === 'linkZone'">
-      <p class="screen-title">📍 Vinculación a Zona de Trabajo</p>
+      <p class="screen-title">Vinculación a zona de trabajo</p>
       <p class="screen-sub">Ingresa el Código de Zona brindado por tu Administrador (Ej: ZONA-SDMC-2026) para unirte al centro de mando.</p>
       <div class="form-group">
         <input type="text" [(ngModel)]="inputZoneCode" placeholder="Ej. ZONA-SDMC-2026" class="inp" style="text-transform: uppercase; font-weight: 700; text-align: center; letter-spacing: 2px;" (keyup.enter)="doLinkZone()">
@@ -144,11 +183,11 @@
     </div>
 
     <!-- Éxito -->
-    <div class="alert-success" *ngIf="success && !isLoading">✅ {{ success }}</div>
+    <div class="alert-success" *ngIf="success && !isLoading">{{ success }}</div>
 
     <!-- Error -->
-    <div class="login-error" *ngIf="error && !isLoading">⚠️ {{ error }}</div>
+    <div class="login-error" *ngIf="error && !isLoading && screen !== 'verify'">{{ error }}</div>
 
-    <div class="login-footer">🔒 Entorno protegido para personal autorizado</div>
+    <div class="login-footer">Entorno protegido para personal autorizado</div>
   </div>
 </div>

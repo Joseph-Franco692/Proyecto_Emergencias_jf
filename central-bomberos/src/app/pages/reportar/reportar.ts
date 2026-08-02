@@ -31,7 +31,7 @@ export class ReportarComponent implements OnInit {
   public telefono: string = '';
   public direccionAproximada: string = '';
 
-  private API_URL = 'http://localhost:8081/api/reportes';
+  private API_URL = '/api/reportes';
   private mapa!: L.Map;
   private marcador!: L.Marker;
 
@@ -44,12 +44,12 @@ export class ReportarComponent implements OnInit {
   public ticketId: string = '';
 
   public tiposEmergencia = [
-    { nombre: 'Incendio', emoji: '🔥' },
-    { nombre: 'Accidente', emoji: '🚗' },
-    { nombre: 'Gas / Quím.', emoji: '⚠️' },
-    { nombre: 'Derrumbe', emoji: '🏗' },
-    { nombre: 'Inundación', emoji: '💧' },
-    { nombre: 'Otro', emoji: '🆘' }
+    { nombre: 'Incendio' },
+    { nombre: 'Accidente' },
+    { nombre: 'Gas / Quím.' },
+    { nombre: 'Derrumbe' },
+    { nombre: 'Inundación' },
+    { nombre: 'Otro' }
   ];
 
   constructor(private http: HttpClient, private cdr: ChangeDetectorRef) {}
@@ -166,17 +166,28 @@ export class ReportarComponent implements OnInit {
   }
 
   public goTo(screen: number): void {
+    if (screen === 2 && this.descripcionBreve.trim().length < 10) {
+      alert('Describe la emergencia con al menos 10 caracteres para orientar correctamente a la central.');
+      return;
+    }
     // Si intentamos avanzar al paso 2 sin tener GPS validado, bloqueamos al usuario
     if (screen === 2 && this.gpsStatus !== 'GPS OK') {
       alert('Para garantizar una respuesta de emergencia coordinada, es obligatorio otorgar permisos de GPS en tu navegador para detectar la ubicación del dispositivo.');
       return;
     }
-    // Validación de celular antes de ir al paso 4
+    // Validaciones de contacto ajustadas a Ecuador.
     if (screen === 4) {
-      if (!this.telefono || this.telefono.length < 10) {
-        alert('Por favor, ingresa un número de celular válido de 10 dígitos.');
+      const nombreValido = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]{3,80}$/.test(this.nombreCompleto.trim());
+      if (!nombreValido) {
+        alert('Ingresa un nombre completo válido, sin números ni caracteres especiales.');
         return;
       }
+      if (!/^09\d{8}$/.test(this.telefono)) {
+        alert('Ingresa un celular ecuatoriano válido de 10 dígitos que comience con 09.');
+        return;
+      }
+      this.nombreCompleto = this.nombreCompleto.trim().replace(/\s+/g, ' ');
+      this.direccionAproximada = this.direccionAproximada.trim();
     }
     this.currentScreen = screen;
   }
@@ -199,6 +210,11 @@ export class ReportarComponent implements OnInit {
       }
 
       const file = files[i];
+      const formatosPermitidos = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'];
+      if (!formatosPermitidos.includes(file.type)) {
+        alert(`El formato de ${file.name} no está permitido. Usa JPG, PNG, WEBP, MP4 o WEBM.`);
+        continue;
+      }
       // Max 15 MB validation (matching spring.servlet.multipart.max-file-size in backend)
       if (file.size > 15 * 1024 * 1024) {
         alert(`El archivo ${file.name} supera los 15 MB permitidos por el servidor.`);

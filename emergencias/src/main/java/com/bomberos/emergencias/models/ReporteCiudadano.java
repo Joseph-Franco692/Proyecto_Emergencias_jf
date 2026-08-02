@@ -41,4 +41,20 @@ public class ReporteCiudadano {
 
     @Column(name = "fecha_reporte", updatable = false)
     private LocalDateTime fechaReporte = LocalDateTime.now();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado", length = 24)
+    private EstadoReporte estado = EstadoReporte.PENDIENTE;
+
+    @Column(name = "fecha_atencion")
+    private LocalDateTime fechaAtencion;
+
+    @Column(name = "fecha_cierre")
+    private LocalDateTime fechaCierre;
+
+    @PrePersist
+    void establecerEstadoInicial() {
+        if (estado == null) estado = EstadoReporte.PENDIENTE;
+        if (fechaReporte == null) fechaReporte = LocalDateTime.now();
+    }
 }
