@@ -4,3 +4,5 @@ contexto_*.txt
 **/target/
 **/node_modules/
 **/dist/
+"mejor_modelo_crisis_avanzado.pth" 
+"__pycache__/" 

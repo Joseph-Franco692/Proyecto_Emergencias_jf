@@ -1,0 +1,118 @@
+name: gestion-bomberil
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  pocketbase:
+    build:
+      context: ./docker/pocketbase
+    image: gestion-bomberil-pocketbase:local
+    ports:
+      - "${POCKETBASE_PORT:-8091}:8090"
+    volumes:
+      - pocketbase_data:/pb/pb_data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "${OLLAMA_PORT:-11435}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./emergencias
+    image: gestion-bomberil-backend:local
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      EVIDENCE_STORAGE_PROVIDER: pocketbase
+      EVIDENCE_LOCAL_DIRECTORY: /app/uploads
+      POCKETBASE_URL: http://pocketbase:8090
+      POCKETBASE_COLLECTION: ${POCKETBASE_COLLECTION}
+      POCKETBASE_TOKEN: ${POCKETBASE_TOKEN}
+      OLLAMA_URL: http://ollama:11434/api/generate
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      IOT_NODE_KEY: ${IOT_NODE_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:8080}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
+      PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
+    ports:
+      - "${BACKEND_PORT:-8082}:8081"
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pocketbase:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8081/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./central-bomberos
+    image: gestion-bomberil-frontend:local
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    command: ["http", "--url=${NGROK_DOMAIN}", "backend:8081"]
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "${NGROK_INSPECT_PORT:-4041}:4040"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  pocketbase_data:
+  ollama_data:
+  backend_uploads:
